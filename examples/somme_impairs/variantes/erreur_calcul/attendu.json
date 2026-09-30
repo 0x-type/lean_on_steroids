@@ -1,0 +1,4 @@
+{
+ "issue": "erreur mathématique établie",
+ "description": "L'élève écrit n² + 2n au lieu de n² + (2n+1) : deux égalités fausses, réfutées dans Lean."
+}

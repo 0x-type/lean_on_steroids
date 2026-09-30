@@ -1,0 +1,4 @@
+{
+ "issue": "examen nécessaire",
+ "description": "Même copie fausse, mais la formalisation corrige silencieusement l'élève : Lean vérifie tout, l'empreinte numérique détecte que Lean ne dit pas ce que dit la copie."
+}

@@ -1,0 +1,9 @@
+{
+  "exercise_id": "somme_impairs",
+  "statement_latex": "\\textbf{Exercice.} Montrer que, pour tout entier naturel \\(n\\), \\[ \\sum_{k=0}^{n-1}(2k+1)=n^2. \\] Pour \\(n=0\\), la somme est vide et vaut \\(0\\).",
+  "notes_latex": "Convention : une somme vide vaut 0.",
+  "lean_imports": ["MathOCRCheck.Prelude"],
+  "lean_opens": ["Finset"],
+  "lean_statement": "∀ n : ℕ, ∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2",
+  "validated_by": "exemple fourni avec le prototype (à faire valider par l'enseignant)"
+}

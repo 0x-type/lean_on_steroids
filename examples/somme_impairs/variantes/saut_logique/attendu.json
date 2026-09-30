@@ -1,0 +1,4 @@
+{
+ "issue": "examen nécessaire",
+ "description": "L'hérédité affirme le résultat sans utiliser l'hypothèse de récurrence : l'étape est vraie mais non justifiée ; Lean ne peut ni la vérifier élémentairement ni la réfuter."
+}

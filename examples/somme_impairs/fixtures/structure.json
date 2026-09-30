@@ -1,0 +1,312 @@
+{
+ "scopes": [
+  {
+   "id": "global",
+   "parent": null
+  },
+  {
+   "id": "H",
+   "parent": "global",
+   "variables": [
+    "n"
+   ],
+   "assumptions": [
+    "S07"
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "id": "S01",
+   "kind": "definition",
+   "statement": "P(n) : \\sum_{k=0}^{n-1} (2k+1) = n^2",
+   "source": [
+    {
+     "line_id": "p1.L01",
+     "excerpt": "on note $P(n)$ la propriété"
+    },
+    {
+     "line_id": "p1.L02",
+     "excerpt": "$P(n) : \\sum_{k=0}^{n-1} (2k+1) = n^2$"
+    }
+   ]
+  },
+  {
+   "id": "S02",
+   "kind": "introduction",
+   "statement": "n = 0",
+   "source": [
+    {
+     "line_id": "p1.L03",
+     "excerpt": "Pour $n = 0$"
+    }
+   ]
+  },
+  {
+   "id": "S03",
+   "kind": "affirmation",
+   "statement": "\\sum_{k=0}^{-1} (2k+1) \\text{ est nulle}",
+   "source": [
+    {
+     "line_id": "p1.L03",
+     "excerpt": "$\\sum_{k=0}^{-1} (2k+1)$ est nulle"
+    }
+   ]
+  },
+  {
+   "id": "S04",
+   "kind": "affirmation",
+   "statement": "0^2 = 0",
+   "connective": "donc",
+   "depends_on": [
+    "S03"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L04",
+     "excerpt": "donc $0^2 = 0$"
+    }
+   ]
+  },
+  {
+   "id": "S05",
+   "kind": "affirmation",
+   "statement": "P(0) \\text{ est vraie}",
+   "depends_on": [
+    "S03",
+    "S04"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L05",
+     "excerpt": "$P(0)$ est vraie."
+    }
+   ]
+  },
+  {
+   "id": "S06",
+   "kind": "introduction",
+   "scope": "H",
+   "statement": "n \\in \\mathbb{N} \\text{ fixé}",
+   "source": [
+    {
+     "line_id": "p1.L07",
+     "excerpt": "Soit $n \\in \\mathbb{N}$ fixé."
+    }
+   ]
+  },
+  {
+   "id": "S07",
+   "kind": "hypothese",
+   "scope": "H",
+   "statement": "P(n)",
+   "source": [
+    {
+     "line_id": "p1.L07",
+     "excerpt": "Supposons que $P(n)$ vraie"
+    }
+   ]
+  },
+  {
+   "id": "S08",
+   "kind": "affirmation",
+   "scope": "H",
+   "statement": "\\sum_{k=0}^{n-1} (2k+1) = n^2",
+   "connective": "c-à-d",
+   "depends_on": [
+    "S07"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L08",
+     "excerpt": "c-à-d $\\sum_{k=0}^{n-1} (2k+1) = n^2$"
+    }
+   ]
+  },
+  {
+   "id": "S09",
+   "kind": "annonce",
+   "scope": "H",
+   "statement": "P(n+1)",
+   "source": [
+    {
+     "line_id": "p1.L09",
+     "excerpt": "M.q. $P(n+1)$ est vraie."
+    }
+   ]
+  },
+  {
+   "id": "S10",
+   "kind": "calcul",
+   "scope": "H",
+   "statement": "\\sum_{k=0}^{n} (2k+1) = \\sum_{k=0}^{n-1} (2k+1) + (2n+1)",
+   "connective": "=",
+   "source": [
+    {
+     "line_id": "p1.L10",
+     "excerpt": "$\\sum_{k=0}^{n} (2k+1) = \\sum_{k=0}^{n-1} (2k+1) + (2n+1)$"
+    }
+   ]
+  },
+  {
+   "id": "S11",
+   "kind": "calcul",
+   "scope": "H",
+   "statement": "\\sum_{k=0}^{n-1} (2k+1) + (2n+1) = n^2 + (2n+1)",
+   "connective": "=",
+   "justification": "d'après H.R.",
+   "depends_on": [
+    "S07"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L11",
+     "excerpt": "$= n^2 + (2n+1)$ (d'après H.R.)"
+    }
+   ]
+  },
+  {
+   "id": "S12",
+   "kind": "calcul",
+   "scope": "H",
+   "statement": "n^2 + (2n+1) = (n+1)^2",
+   "connective": "=",
+   "source": [
+    {
+     "line_id": "p1.L12",
+     "excerpt": "$= (n+1)^2$"
+    }
+   ]
+  },
+  {
+   "id": "S13",
+   "kind": "affirmation",
+   "scope": "H",
+   "statement": "\\sum_{k=0}^{n} (2k+1) = (n+1)^2",
+   "depends_on": [
+    "S10",
+    "S11",
+    "S12"
+   ],
+   "implicit": true,
+   "implicit_reason": "chaine_egalites",
+   "source": [
+    {
+     "line_id": "p1.L10",
+     "excerpt": ""
+    },
+    {
+     "line_id": "p1.L11",
+     "excerpt": ""
+    },
+    {
+     "line_id": "p1.L12",
+     "excerpt": ""
+    }
+   ]
+  },
+  {
+   "id": "S14",
+   "kind": "affirmation",
+   "scope": "H",
+   "statement": "P(n+1) \\text{ est vraie}",
+   "connective": "donc",
+   "depends_on": [
+    "S13"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L13",
+     "excerpt": "Donc $P(n+1)$ est vraie."
+    }
+   ]
+  },
+  {
+   "id": "S15",
+   "kind": "affirmation",
+   "statement": "P(0) \\text{ et } \\forall n,\\ P(n) \\Rightarrow P(n+1)",
+   "depends_on": [
+    "S05",
+    "S14"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L14",
+     "excerpt": "$P(0)$ est vraie et $P(n) \\Rightarrow P(n+1)$ $\\forall n \\in \\mathbb{N}$"
+    }
+   ]
+  },
+  {
+   "id": "S16",
+   "kind": "affirmation",
+   "statement": "\\forall n,\\ P(n)",
+   "depends_on": [
+    "S15"
+   ],
+   "implicit": true,
+   "implicit_reason": "schema_recurrence",
+   "source": [
+    {
+     "line_id": "p1.L15",
+     "excerpt": "alors"
+    }
+   ]
+  },
+  {
+   "id": "S17",
+   "kind": "conclusion",
+   "statement": "\\sum_{k=0}^{n-1} (2k+1) = n^2",
+   "connective": "alors",
+   "depends_on": [
+    "S16"
+   ],
+   "source": [
+    {
+     "line_id": "p1.L15",
+     "excerpt": "alors"
+    },
+    {
+     "line_id": "p1.L16",
+     "excerpt": "$\\sum_{k=0}^{n-1} (2k+1) = n^2$"
+    }
+   ]
+  }
+ ],
+ "pattern": {
+  "kind": "recurrence_simple",
+  "base_step": "S05",
+  "heredity_scope": "H",
+  "heredity_step": "S14",
+  "conclusion_step": "S17",
+  "variable": "n"
+ },
+ "observations": [
+  {
+   "step_ids": [
+    "S04"
+   ],
+   "severity": "redaction",
+   "text": "« … est nulle donc 0² = 0 » : l'égalité 0² = 0 ne découle pas de la nullité de la somme. Il fallait écrire : la somme vaut 0 et 0² = 0, donc P(0) est vraie."
+  },
+  {
+   "step_ids": [
+    "S16",
+    "S17"
+   ],
+   "severity": "redaction",
+   "text": "La conclusion ne cite pas le principe de récurrence et l'égalité finale n'est pas quantifiée (« pour tout n ∈ ℕ »)."
+  },
+  {
+   "step_ids": [
+    "S07"
+   ],
+   "severity": "info",
+   "text": "« Supposons que P(n) vraie » : il manque le verbe (« soit vraie »)."
+  }
+ ],
+ "unmapped_lines": [
+  "p1.L00",
+  "p1.L05r",
+  "p1.L06"
+ ]
+}

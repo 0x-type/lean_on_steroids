@@ -1,0 +1,506 @@
+{
+ "pages": [
+  {
+   "page": 1,
+   "path": "copie_p1.webp",
+   "width": 1500,
+   "height": 2000,
+   "sha256": "cadd70ce94a3702684b1f342cc53407957ac7b243e2f2b37f59dd01e6ea43f5e"
+  }
+ ],
+ "lines": [
+  {
+   "id": "p1.L00",
+   "page": 1,
+   "bbox": [
+    245,
+    298,
+    305,
+    330
+   ],
+   "text": "Ex.",
+   "status": "hors_sujet",
+   "confidence": 0.6,
+   "engine_readings": {
+    "lecture-agent": "Ex."
+   }
+  },
+  {
+   "id": "p1.L01",
+   "page": 1,
+   "bbox": [
+    240,
+    350,
+    1040,
+    402
+   ],
+   "text": "Pour $n \\in \\mathbb{N}$, on note $P(n)$ la propriété",
+   "status": "normal",
+   "confidence": 0.85,
+   "engine_readings": {
+    "lecture-agent": "Pour $n \\in \\mathbb{N}$, on note $P(n)$ la propriété"
+   }
+  },
+  {
+   "id": "p1.L02",
+   "page": 1,
+   "bbox": [
+    440,
+    402,
+    935,
+    488
+   ],
+   "text": "$P(n) : \\sum_{k=0}^{n-1} (2k+1) = n^2$",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "$P(n) : \\sum_{k=0}^{n-1} (2k+1) = n^2$"
+   }
+  },
+  {
+   "id": "p1.L03",
+   "page": 1,
+   "bbox": [
+    240,
+    530,
+    1195,
+    602
+   ],
+   "text": "Initialisation : Pour $n = 0$, $\\sum_{k=0}^{-1} (2k+1)$ est nulle",
+   "status": "normal",
+   "confidence": 0.7,
+   "engine_readings": {
+    "lecture-agent": "Initialisation : Pour $n = 0$, $\\sum_{k=0}^{-1} (2k+1)$ est nulle"
+   }
+  },
+  {
+   "id": "p1.L04",
+   "page": 1,
+   "bbox": [
+    340,
+    598,
+    715,
+    652
+   ],
+   "text": "donc $0^2 = 0$",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "donc $0^2 = 0$"
+   }
+  },
+  {
+   "id": "p1.L05",
+   "page": 1,
+   "bbox": [
+    475,
+    670,
+    850,
+    722
+   ],
+   "text": "$P(0)$ est vraie.",
+   "status": "normal",
+   "confidence": 0.9,
+   "engine_readings": {
+    "lecture-agent": "$P(0)$ est vraie."
+   }
+  },
+  {
+   "id": "p1.L05r",
+   "page": 1,
+   "bbox": [
+    875,
+    672,
+    945,
+    724
+   ],
+   "text": "(gribouillis)",
+   "status": "barré",
+   "confidence": 0.95,
+   "engine_readings": {
+    "lecture-agent": "(gribouillis)"
+   }
+  },
+  {
+   "id": "p1.L06",
+   "page": 1,
+   "bbox": [
+    245,
+    748,
+    415,
+    798
+   ],
+   "text": "Hérédité :",
+   "status": "normal",
+   "confidence": 0.9,
+   "engine_readings": {
+    "lecture-agent": "Hérédité :"
+   }
+  },
+  {
+   "id": "p1.L07",
+   "page": 1,
+   "bbox": [
+    275,
+    802,
+    1230,
+    862
+   ],
+   "text": "Soit $n \\in \\mathbb{N}$ fixé. Supposons que $P(n)$ vraie,",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "Soit $n \\in \\mathbb{N}$ fixé. Supposons que $P(n)$ vraie,"
+   }
+  },
+  {
+   "id": "p1.L08",
+   "page": 1,
+   "bbox": [
+    215,
+    862,
+    875,
+    958
+   ],
+   "text": "c-à-d $\\sum_{k=0}^{n-1} (2k+1) = n^2$",
+   "status": "normal",
+   "confidence": 0.75,
+   "engine_readings": {
+    "lecture-agent": "c-à-d $\\sum_{k=0}^{n-1} (2k+1) = n^2$"
+   }
+  },
+  {
+   "id": "p1.L09",
+   "page": 1,
+   "bbox": [
+    265,
+    958,
+    825,
+    1018
+   ],
+   "text": "M.q. $P(n+1)$ est vraie.",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "M.q. $P(n+1)$ est vraie."
+   }
+  },
+  {
+   "id": "p1.L10",
+   "page": 1,
+   "bbox": [
+    380,
+    1050,
+    1200,
+    1162
+   ],
+   "text": "$\\sum_{k=0}^{n} (2k+1) = (n+1)^2$ (évident)",
+   "status": "normal",
+   "confidence": 0.7,
+   "engine_readings": {
+    "lecture-agent": "$\\sum_{k=0}^{n} (2k+1) = (n+1)^2$ (évident)"
+   }
+  },
+  {
+   "id": "p1.L11",
+   "page": 1,
+   "bbox": [
+    640,
+    1138,
+    1335,
+    1198
+   ],
+   "text": "$= n^2 + (2n+1)$ (d'après H.R.)",
+   "status": "barré",
+   "confidence": 0.85,
+   "engine_readings": {
+    "lecture-agent": "$= n^2 + (2n+1)$ (d'après H.R.)"
+   }
+  },
+  {
+   "id": "p1.L12",
+   "page": 1,
+   "bbox": [
+    640,
+    1212,
+    865,
+    1272
+   ],
+   "text": "$= (n+1)^2$",
+   "status": "barré",
+   "confidence": 0.85,
+   "engine_readings": {
+    "lecture-agent": "$= (n+1)^2$"
+   }
+  },
+  {
+   "id": "p1.L13",
+   "page": 1,
+   "bbox": [
+    250,
+    1300,
+    905,
+    1358
+   ],
+   "text": "Donc $P(n+1)$ est vraie.",
+   "status": "normal",
+   "confidence": 0.85,
+   "engine_readings": {
+    "lecture-agent": "Donc $P(n+1)$ est vraie."
+   }
+  },
+  {
+   "id": "p1.L14",
+   "page": 1,
+   "bbox": [
+    215,
+    1415,
+    1395,
+    1512
+   ],
+   "text": "Conclusion : $P(0)$ est vraie et $P(n) \\Rightarrow P(n+1)$ $\\forall n \\in \\mathbb{N}$",
+   "status": "normal",
+   "confidence": 0.7,
+   "engine_readings": {
+    "lecture-agent": "Conclusion : $P(0)$ est vraie et $P(n) \\Rightarrow P(n+1)$ $\\forall n \\in \\mathbb{N}$"
+   }
+  },
+  {
+   "id": "p1.L15",
+   "page": 1,
+   "bbox": [
+    240,
+    1555,
+    340,
+    1602
+   ],
+   "text": "alors",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "alors"
+   }
+  },
+  {
+   "id": "p1.L16",
+   "page": 1,
+   "bbox": [
+    500,
+    1580,
+    1015,
+    1718
+   ],
+   "text": "$\\sum_{k=0}^{n-1} (2k+1) = n^2$",
+   "status": "normal",
+   "confidence": 0.8,
+   "engine_readings": {
+    "lecture-agent": "$\\sum_{k=0}^{n-1} (2k+1) = n^2$"
+   }
+  }
+ ],
+ "uncertainties": [
+  {
+   "id": "U01",
+   "line_id": "p1.L02",
+   "span": "2k",
+   "readings": [
+    {
+     "text": "2k",
+     "score": 0.8,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "\\ell k",
+     "score": 0.2,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "2k",
+   "reason": "Le « 2 » est tracé en boucle comme un « ℓ » ; même tracé qu'en L10 où la lecture 2 est nette (premier membre).",
+   "context_dependent": false,
+   "replace_all": true
+  },
+  {
+   "id": "U02",
+   "line_id": "p1.L02",
+   "span": "k",
+   "readings": [
+    {
+     "text": "k",
+     "score": 0.6,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "h",
+     "score": 0.4,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "k",
+   "reason": "La lettre d'indice ressemble à un « h » ; variable muette, tracé identique dans toute la copie.",
+   "context_dependent": false,
+   "replace_all": true
+  },
+  {
+   "id": "U03",
+   "line_id": "p1.L03",
+   "span": "^{-1}",
+   "readings": [
+    {
+     "text": "^{-1}",
+     "score": 0.9,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "^{1}",
+     "score": 0.1,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "^{-1}",
+   "reason": "Borne supérieure : petit arc « ⌒ » devant le 1, lu comme un signe moins.",
+   "context_dependent": false
+  },
+  {
+   "id": "U04",
+   "line_id": "p1.L03",
+   "span": "est nulle",
+   "readings": [
+    {
+     "text": "est nulle",
+     "score": 0.55,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "est vide",
+     "score": 0.45,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "est nulle",
+   "reason": "Mot très cursif (« wiole ») : « nulle » ou « vide ».",
+   "context_dependent": false
+  },
+  {
+   "id": "U05",
+   "line_id": "p1.L04",
+   "span": "0^2",
+   "readings": [
+    {
+     "text": "0^2",
+     "score": 0.85,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "0^\\ell",
+     "score": 0.15,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "0^2",
+   "reason": "Exposant tracé comme un « ℓ » (même tracé du 2 que U01).",
+   "context_dependent": false
+  },
+  {
+   "id": "U06",
+   "line_id": "p1.L08",
+   "span": "n^2",
+   "readings": [
+    {
+     "text": "n^2",
+     "score": 0.8,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "n^\\varepsilon",
+     "score": 0.2,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "n^2",
+   "reason": "Exposant ressemblant à « ε ».",
+   "context_dependent": false
+  },
+  {
+   "id": "U09",
+   "line_id": "p1.L14",
+   "span": "P(n)",
+   "readings": [
+    {
+     "text": "P(n)",
+     "score": 0.85,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "Y(n)",
+     "score": 0.15,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "P(n)",
+   "reason": "Le premier « P » de la ligne ressemble à un « Y ».",
+   "context_dependent": true
+  },
+  {
+   "id": "U10",
+   "line_id": "p1.L16",
+   "span": "n^2",
+   "readings": [
+    {
+     "text": "n^2",
+     "score": 0.8,
+     "support": [
+      "lecture-agent"
+     ]
+    },
+    {
+     "text": "n^L",
+     "score": 0.2,
+     "support": [
+      "lecture-agent"
+     ]
+    }
+   ],
+   "chosen": "n^2",
+   "reason": "Exposant tracé comme un « L ».",
+   "context_dependent": false
+  }
+ ],
+ "engines": [
+  {
+   "engine": "lecture-agent",
+   "model": "lecture manuelle assistée (session de développement)",
+   "mode": "fixture",
+   "ok": true
+  }
+ ],
+ "provenance": "Transcription de référence établie pendant le développement (lecture zoomée ligne à ligne), enregistrée comme fixture pour exécuter le pipeline sans clé d'API. En production, elle est produite par l'ensemble OCR multi-moteurs (voir mathocr.stages.transcribe)."
+}

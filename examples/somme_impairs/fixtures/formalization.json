@@ -1,0 +1,267 @@
+{
+ "scopes": [
+  {
+   "scope_id": "H",
+   "binders": [
+    {
+     "name": "n",
+     "type": "ℕ"
+    }
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "step_id": "S01",
+   "role": "def",
+   "def_name": "P",
+   "def_binders": [
+    {
+     "name": "n",
+     "type": "ℕ"
+    }
+   ],
+   "def_body": "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2",
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range n, (2 * k + 1)",
+    "rhs_lean": "n ^ 2",
+    "lhs_latex": "\\sum_{k=0}^{n-1} (2k+1)",
+    "rhs_latex": "n^2",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S02",
+   "role": "none",
+   "not_formalized_reason": "choix du cas n = 0 (pas une affirmation)"
+  },
+  {
+   "step_id": "S03",
+   "role": "prop",
+   "claim": "∑ k ∈ Finset.range 0, (2 * k + 1) = 0",
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range 0, (2 * k + 1)",
+    "rhs_lean": "0",
+    "lhs_latex": "\\sum_{k=0}^{-1} (2k+1)",
+    "rhs_latex": "0",
+    "value_type": "ℕ",
+    "variables": []
+   }
+  },
+  {
+   "step_id": "S04",
+   "role": "prop",
+   "claim": "(0 : ℕ) ^ 2 = 0",
+   "uses": [
+    "S03"
+   ],
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "(0 : ℕ) ^ 2",
+    "rhs_lean": "0",
+    "lhs_latex": "0^2",
+    "rhs_latex": "0",
+    "value_type": "ℕ",
+    "variables": []
+   }
+  },
+  {
+   "step_id": "S05",
+   "role": "prop",
+   "claim": "P 0",
+   "uses": [
+    "S03",
+    "S04"
+   ],
+   "predicate_app": [
+    "P",
+    "0"
+   ]
+  },
+  {
+   "step_id": "S06",
+   "role": "none",
+   "not_formalized_reason": "introduction de la variable n (portée H)"
+  },
+  {
+   "step_id": "S07",
+   "role": "hyp",
+   "claim": "P n",
+   "predicate_app": [
+    "P",
+    "n"
+   ]
+  },
+  {
+   "step_id": "S08",
+   "role": "prop",
+   "claim": "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2",
+   "uses": [
+    "S07"
+   ],
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range n, (2 * k + 1)",
+    "rhs_lean": "n ^ 2",
+    "lhs_latex": "\\sum_{k=0}^{n-1} (2k+1)",
+    "rhs_latex": "n^2",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S09",
+   "role": "none",
+   "not_formalized_reason": "annonce du but (« montrons que »)"
+  },
+  {
+   "step_id": "S10",
+   "role": "prop",
+   "claim": "∑ k ∈ Finset.range (n + 1), (2 * k + 1) = ∑ k ∈ Finset.range n, (2 * k + 1) + (2 * n + 1)",
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range (n + 1), (2 * k + 1)",
+    "rhs_lean": "∑ k ∈ Finset.range n, (2 * k + 1) + (2 * n + 1)",
+    "lhs_latex": "\\sum_{k=0}^{n} (2k+1)",
+    "rhs_latex": "\\sum_{k=0}^{n-1} (2k+1) + (2n+1)",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S11",
+   "role": "prop",
+   "claim": "∑ k ∈ Finset.range n, (2 * k + 1) + (2 * n + 1) = n ^ 2 + (2 * n + 1)",
+   "uses": [
+    "S07"
+   ],
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range n, (2 * k + 1) + (2 * n + 1)",
+    "rhs_lean": "n ^ 2 + (2 * n + 1)",
+    "lhs_latex": "\\sum_{k=0}^{n-1} (2k+1) + (2n+1)",
+    "rhs_latex": "n^2 + (2n+1)",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S12",
+   "role": "prop",
+   "claim": "n ^ 2 + (2 * n + 1) = (n + 1) ^ 2",
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "n ^ 2 + (2 * n + 1)",
+    "rhs_lean": "(n + 1) ^ 2",
+    "lhs_latex": "n^2 + (2n+1)",
+    "rhs_latex": "(n+1)^2",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S13",
+   "role": "prop",
+   "claim": "∑ k ∈ Finset.range (n + 1), (2 * k + 1) = (n + 1) ^ 2",
+   "uses": [
+    "S10",
+    "S11",
+    "S12"
+   ],
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range (n + 1), (2 * k + 1)",
+    "rhs_lean": "(n + 1) ^ 2",
+    "lhs_latex": "\\sum_{k=0}^{n} (2k+1)",
+    "rhs_latex": "(n+1)^2",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  },
+  {
+   "step_id": "S14",
+   "role": "prop",
+   "claim": "P (n + 1)",
+   "uses": [
+    "S13"
+   ],
+   "predicate_app": [
+    "P",
+    "n+1"
+   ]
+  },
+  {
+   "step_id": "S15",
+   "role": "prop",
+   "claim": "P 0 ∧ ∀ n : ℕ, P n → P (n + 1)",
+   "uses": [
+    "S05",
+    "S14"
+   ]
+  },
+  {
+   "step_id": "S16",
+   "role": "prop",
+   "claim": "∀ n : ℕ, P n",
+   "uses": [
+    "S15"
+   ]
+  },
+  {
+   "step_id": "S17",
+   "role": "prop",
+   "claim": "∀ n : ℕ, ∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2",
+   "uses": [
+    "S16"
+   ],
+   "sides": {
+    "relation": "=",
+    "lhs_lean": "∑ k ∈ Finset.range n, (2 * k + 1)",
+    "rhs_lean": "n ^ 2",
+    "lhs_latex": "\\sum_{k=0}^{n-1} (2k+1)",
+    "rhs_latex": "n^2",
+    "value_type": "ℕ",
+    "variables": [
+     {
+      "name": "n",
+      "type": "ℕ"
+     }
+    ]
+   }
+  }
+ ],
+ "provenance": "Formalisation de référence écrite pendant le développement (fixture hors-ligne)."
+}
