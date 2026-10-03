@@ -1,0 +1,9 @@
+{
+ "description": "Jeu d'évaluation de la lecture. Ajouter un cas par copie réelle : photo(s) + transcription de référence vérifiée à la main.",
+ "cas": [
+  {"nom": "somme_impairs_p1",
+   "exercice": "somme_impairs/exercice.json",
+   "images": ["somme_impairs/copie_p1.webp"],
+   "reference": "somme_impairs/fixtures/transcription.json"}
+ ]
+}

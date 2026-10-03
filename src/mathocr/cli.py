@@ -50,7 +50,8 @@ def _cfg(a) -> PipelineConfig:
     return PipelineConfig(workspace=Path(a.lean_workspace), sandbox=a.sandbox, lean_timeout_s=a.delai,
                           lean_memory_mb=a.memoire, ocr_engines=a.ocr or [], reasoning_engine=a.raisonnement,
                           judge_engine=a.juge, tier2=not a.sans_niveau2, polish_feedback=a.reformuler,
-                          cache_dir=Path(a.cache))
+                          cache_dir=Path(a.cache), ocr_mode=a.mode_ocr, ocr_strong=a.ocr_fort or [],
+                          audit_rate=a.audit)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -68,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--sans-niveau2", action="store_true")
         p.add_argument("--reformuler", action="store_true", help="faire reformuler le retour par l'agent")
         p.add_argument("--cache", default=str(ROOT / "runs" / ".cache"))
+        p.add_argument("--mode-ocr", default="ensemble", choices=["ensemble", "cascade"],
+                       help="cascade : --ocr lisent la page, seules les lignes disputées vont à --ocr-fort")
+        p.add_argument("--ocr-fort", action="append", help="moteur(s) de relecture des lignes disputées (cascade)")
+        p.add_argument("--audit", type=float, default=0.0, help="part des lignes d'accord relues quand même (0-1)")
         p.add_argument("-v", "--verbose", action="store_true")
 
     c = sub.add_parser("corriger", help="corriger une copie")
@@ -80,6 +85,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--json", action="store_true", help="afficher le résultat complet en JSON")
     common(c)
 
+    ev = sub.add_parser("evaluer", help="mesurer la qualité de lecture d'une configuration OCR sur un jeu de copies")
+    ev.add_argument("--jeu", type=Path, default=ROOT / "examples" / "jeu_evaluation.json")
+    ev.add_argument("--sortie", type=Path, default=ROOT / "runs" / "evaluation")
+    common(ev)
+
     ph = sub.add_parser("photo", help="contrôler la qualité de photos (local, gratuit)")
     ph.add_argument("images", nargs="+", type=Path)
 
@@ -91,8 +101,12 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "photo":
         a.lean_workspace, a.sandbox, a.delai, a.memoire, a.ocr, a.raisonnement = ".", "auto", 1, 1, [], None
         a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False
+        a.mode_ocr, a.ocr_fort, a.audit = "ensemble", [], 0.0
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(levelname)s %(message)s")
     cfg = _cfg(a)
+
+    if a.cmd == "evaluer":
+        return _evaluate(a, cfg)
 
     if a.cmd == "photo":
         from .stages.photo_quality import check
@@ -130,6 +144,44 @@ def main(argv: list[str] | None = None) -> int:
         print(_summary(r, out))
         print()
     return rc
+
+
+def _evaluate(a, cfg) -> int:
+    from .llm.pricing import ledger_scope, set_stage
+    from .schemas import ReferenceStatement, Transcription
+    from .stages.evaluate import score, table
+    from .stages.photo_quality import check
+    from .stages.transcribe import transcribe
+
+    jeu = json.loads(a.jeu.read_text())
+    base = a.jeu.parent
+    label = (f"{cfg.ocr_mode}: " + " + ".join(cfg.ocr_engines)
+             + (f" → {' + '.join(cfg.ocr_strong)}" if cfg.ocr_strong else "")
+             + (f" (arbitre {cfg.reasoning_engine})" if cfg.reasoning_engine else ""))
+    a.sortie.mkdir(parents=True, exist_ok=True)
+    scores = []
+    for c in jeu["cas"]:
+        ref = ReferenceStatement(**json.loads((base / c["exercice"]).read_text()))
+        reference = Transcription(**json.loads((base / c["reference"]).read_text()))
+        images = [base / i for i in c["images"]]
+        bad = [q for q in map(check, images) if not q.ok]
+        if bad:
+            print(f"{c['nom']} : photo refusée ({bad[0].problems})")
+            continue
+        with ledger_scope() as led:
+            set_stage("transcription")
+            hyp = transcribe(images, ref, cfg)
+            cost = led.report()
+        (a.sortie / f"{c['nom']}.json").write_text(hyp.model_dump_json(indent=1))
+        sc = score(reference, hyp, case=c["nom"], config=label)
+        sc.cost_usd = cost.total_usd if cost.complete else None
+        scores.append(sc)
+        for err in sc.errors:
+            print(f"  {c['nom']} {err.ref_line}: attendu « {err.expected} », lu « {err.got} »"
+                  f" {'(signalé)' if err.flagged else '(SILENCIEUX)'}")
+    print(table(scores))
+    (a.sortie / "scores.json").write_text(json.dumps([s.model_dump() for s in scores], ensure_ascii=False, indent=1))
+    return 0
 
 
 if __name__ == "__main__":

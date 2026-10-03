@@ -71,6 +71,17 @@ class WirePage(BaseModel):
     notes: str = ""
 
 
+class WireCropReading(BaseModel):
+    id: str
+    text: str
+    confidence: float
+    uncertain: list[WireSpan] = Field(default_factory=list)
+
+
+class WireCropReadings(BaseModel):
+    items: list[WireCropReading]
+
+
 class WireDecision(BaseModel):
     id: str
     readings: list[WireAlt]
@@ -139,6 +150,79 @@ def _y_iou(a, b) -> float:
 # -- Consensus -----------------------------------------------------------------------------
 
 
+def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engines: int,
+                       uid: int) -> tuple[str, list[Uncertainty], int]:
+    """Compare les lectures d'une même ligne ; retourne (texte retenu, incertitudes, prochain id).
+
+    Chaque fragment divergent devient une incertitude dont les lectures sont pondérées par le
+    nombre de moteurs qui les soutiennent ; la lecture majoritaire est retenue dans le texte
+    (en cas d'égalité, celle du moteur d'ancrage)."""
+    a = group[anchor]
+    a_norm = normalize(a.text)
+    text = a.text
+    uncs: list[Uncertainty] = []
+    spans: dict[tuple[int, int], dict[str, set[str]]] = {}
+    ta = tokens(a_norm)
+    for e, g in group.items():
+        if e == anchor or normalize(g.text) == a_norm:
+            continue
+        b_norm = normalize(g.text)
+        tb = tokens(b_norm)
+        sm = difflib.SequenceMatcher(a=[t[0] for t in ta], b=[t[0] for t in tb], autojunk=False)
+        for op, i1, i2, j1, j2 in sm.get_opcodes():
+            if op == "equal":
+                continue
+            i1c, i2c = (i1, i2) if i2 > i1 else (max(0, i1 - 1), min(len(ta), i1 + 1))
+            if i2c <= i1c:
+                continue
+            s0, s1 = ta[i1c][1], ta[i2c - 1][2]
+            a_seg = a_norm[s0:s1]
+            if i2 > i1:
+                b_seg = b_norm[tb[j1][1]:tb[j2 - 1][2]] if j2 > j1 else ""
+            else:  # insertion chez l'autre moteur : on l'attache au jeton voisin
+                ins = b_norm[tb[j1][1]:tb[j2 - 1][2]] if j2 > j1 else ""
+                b_seg = (a_seg + ins) if i1c < i1 else (ins + a_seg)
+            spans.setdefault((s0, s1), {a_seg: {anchor}}).setdefault(b_seg, set()).add(e)
+    if spans:
+        text = a_norm  # les positions des fragments sont celles du texte normalisé
+    replacements = []
+    for (s0, s1), readings in sorted(spans.items()):
+        a_seg = a_norm[s0:s1]
+        for e, g in group.items():
+            if normalize(g.text) == a_norm:
+                readings[a_seg].add(e)
+        tot = sum(len(v) for v in readings.values())
+        rs = sorted((Reading(text=t, support=sorted(v), score=round(len(v) / tot, 3)) for t, v in readings.items()),
+                    key=lambda r: (-r.score, r.text != a_seg))
+        if rs[0].text != a_seg:
+            replacements.append((s0, s1, rs[0].text))
+        uncs.append(Uncertainty(id=f"U{uid:02d}", line_id=lid, span=rs[0].text, readings=rs, chosen=rs[0].text,
+                                reason="lectures divergentes entre moteurs"))
+        uid += 1
+    for s0, s1, rep in sorted(replacements, reverse=True):  # de droite à gauche : positions stables
+        text = text[:s0] + rep + text[s1:]
+    # Incertitudes déclarées par les moteurs eux-mêmes
+    for e, g in group.items():
+        for sp in g.uncertain:
+            if sp.span not in text or len(sp.alternatives) < 2:
+                continue
+            u = next((u for u in uncs if u.span == sp.span), None)
+            if u is not None:
+                for alt in sp.alternatives:
+                    if all(r.text != alt.text for r in u.readings):
+                        u.readings.append(Reading(text=alt.text, support=[e],
+                                                  score=round(alt.probability / max(1, n_engines), 3)))
+                u.context_dependent |= sp.context_based
+                continue
+            rs = [Reading(text=x.text, support=[e], score=round(x.probability, 3)) for x in sp.alternatives]
+            chosen = sp.span if any(r.text == sp.span for r in rs) else rs[0].text
+            rs.sort(key=lambda r: (r.text != chosen, -r.score))
+            uncs.append(Uncertainty(id=f"U{uid:02d}", line_id=lid, span=sp.span, readings=rs, chosen=chosen,
+                                    reason=f"{e} : {sp.reason}", context_dependent=sp.context_based))
+            uid += 1
+    return text, uncs, uid
+
+
 def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: int,
               uid_start: int = 1) -> tuple[list[TranscribedLine], list[Uncertainty]]:
     engines = [e for e, ls in runs.items() if ls]
@@ -162,9 +246,9 @@ def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: in
             for j, b in enumerate(runs[e]):
                 if j in used[e]:
                     continue
-                s = 0.6 * _y_iou(a.bbox, b.bbox) + 0.4 * fuzz.ratio(normalize(a.text), normalize(b.text)) / 100
-                if s > best_s:
-                    best, best_s = j, s
+                sc = 0.6 * _y_iou(a.bbox, b.bbox) + 0.4 * fuzz.ratio(normalize(a.text), normalize(b.text)) / 100
+                if sc > best_s:
+                    best, best_s = j, sc
             if best is not None:
                 used[e].add(best)
                 group[e] = runs[e][best]
@@ -173,64 +257,11 @@ def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: in
         conf = min(g.confidence for g in group.values()) * (agree / n if n > 1 else 1.0)
         if len(group) < n:
             conf *= 0.7
-        lines.append(TranscribedLine(id=lid, page=page, bbox=px(a.bbox), text=a.text,
+        text, line_uncs, uid = line_uncertainties(lid, anchor, group, n, uid)
+        lines.append(TranscribedLine(id=lid, page=page, bbox=px(a.bbox), text=text,
                                      status=LineStatus(a.status), confidence=round(conf, 3),
                                      engine_readings={e: g.text for e, g in group.items()}))
-        # Divergences entre moteurs -> incertitudes
-        spans: dict[tuple[int, int], dict[str, set[str]]] = {}
-        ta = tokens(normalize(a.text))
-        a_norm = normalize(a.text)
-        for e, g in group.items():
-            if e == anchor or normalize(g.text) == a_norm:
-                continue
-            tb = tokens(normalize(g.text))
-            b_norm = normalize(g.text)
-            sm = difflib.SequenceMatcher(a=[t[0] for t in ta], b=[t[0] for t in tb], autojunk=False)
-            for op, i1, i2, j1, j2 in sm.get_opcodes():
-                if op == "equal":
-                    continue
-                i1c, i2c = (i1, i2) if i2 > i1 else (max(0, i1 - 1), min(len(ta), i1 + 1))
-                if i2c <= i1c:
-                    continue
-                s0, s1 = ta[i1c][1], ta[i2c - 1][2]
-                a_seg = a_norm[s0:s1]
-                if i2 > i1:
-                    b_seg = b_norm[tb[j1][1]:tb[j2 - 1][2]] if j2 > j1 else ""
-                else:  # insertion chez l'autre moteur : on l'attache au jeton voisin
-                    ins = b_norm[tb[j1][1]:tb[j2 - 1][2]] if j2 > j1 else ""
-                    b_seg = (a_seg + ins) if i1c < i1 else (ins + a_seg)
-                spans.setdefault((s0, s1), {a_seg: {anchor}}).setdefault(b_seg, set()).add(e)
-        for (s0, s1), readings in spans.items():
-            a_seg = a_norm[s0:s1]
-            if a_seg not in a.text:  # la normalisation a déplacé le fragment : on garde le texte normalisé
-                lines[-1].text = a_norm
-            for e, g in group.items():
-                if normalize(g.text) == a_norm:
-                    readings[a_seg].add(e)
-            tot = sum(len(v) for v in readings.values())
-            rs = sorted((Reading(text=t, support=sorted(v), score=round(len(v) / tot, 3)) for t, v in readings.items()),
-                        key=lambda r: -r.score)
-            uncs.append(Uncertainty(id=f"U{uid:02d}", line_id=lid, span=a_seg, readings=rs, chosen=rs[0].text,
-                                    reason="lectures divergentes entre moteurs"))
-            uid += 1
-        # Incertitudes déclarées par les moteurs eux-mêmes
-        for e, g in group.items():
-            for sp in g.uncertain:
-                if sp.span not in lines[-1].text or len(sp.alternatives) < 2:
-                    continue
-                if any(u.line_id == lid and u.span == sp.span for u in uncs):
-                    u = next(u for u in uncs if u.line_id == lid and u.span == sp.span)
-                    for alt in sp.alternatives:
-                        if all(r.text != alt.text for r in u.readings):
-                            u.readings.append(Reading(text=alt.text, support=[e], score=round(alt.probability / len(engines), 3)))
-                    u.context_dependent |= sp.context_based
-                    continue
-                rs = [Reading(text=x.text, support=[e], score=round(x.probability, 3)) for x in sp.alternatives]
-                chosen = sp.span if any(r.text == sp.span for r in rs) else rs[0].text
-                rs.sort(key=lambda r: (r.text != chosen, -r.score))
-                uncs.append(Uncertainty(id=f"U{uid:02d}", line_id=lid, span=sp.span, readings=rs, chosen=chosen,
-                                        reason=f"{e} : {sp.reason}", context_dependent=sp.context_based))
-                uid += 1
+        uncs += line_uncs
     # Lignes vues par d'autres moteurs mais pas par l'ancre : contenu possiblement manqué.
     k = len(lines)
     for e in others:
@@ -283,7 +314,95 @@ def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
             u.chosen = u.span = u.readings[0].text
 
 
+# -- Cascade : accord d'abord, zoom sur les lignes disputées ---------------------------------
+
+
+def disputed_lines(lines: list[TranscribedLine], uncs: list[Uncertainty], n_engines: int,
+                   min_conf: float) -> set[str]:
+    """Lignes à relire par un moteur fort : désaccord, doute déclaré, confiance faible, ligne manquée."""
+    out = {u.line_id for u in uncs}
+    for ln in lines:
+        if ln.status != LineStatus.normal:
+            continue
+        if ln.confidence < min_conf or len(ln.engine_readings) < n_engines:
+            out.add(ln.id)
+    return out
+
+
+def audit_sample(lines: list[TranscribedLine], exclude: set[str], rate: float, seed: str) -> set[str]:
+    """Échantillon reproductible de lignes « d'accord » relues quand même (contrôle qualité continu)."""
+    if rate <= 0:
+        return set()
+    pool = [ln.id for ln in lines if ln.status == LineStatus.normal and ln.id not in exclude]
+    k = min(len(pool), max(1, round(rate * len(pool)))) if pool else 0
+    ranked = sorted(pool, key=lambda lid: hashlib.sha256((seed + lid).encode()).hexdigest())
+    return set(ranked[:k])
+
+
+def read_crops(engine: Engine, page_img: Image.Image, lines: list[TranscribedLine]) -> dict[str, WireLine]:
+    images = [to_part(crop_line(page_img, ln.bbox), ln.id, max_side=1600) for ln in lines]
+    out = engine.structured(prompts.OCR_SYSTEM, prompts.OCR_CROPS_TASK + "\nIdentifiants : "
+                            + ", ".join(ln.id for ln in lines), images, WireCropReadings)
+    return {r.id: WireLine(bbox=[0, 0, 0, 0], text=r.text, confidence=r.confidence, uncertain=r.uncertain)
+            for r in out.items if r.id in {ln.id for ln in lines}}
+
+
+def cascade_page(page: int, im: Image.Image, runs: dict[str, list[WireLine]], strong: list[Engine],
+                 cfg, seed: str, uid_start: int) -> tuple[list[TranscribedLine], list[Uncertainty], list[EngineRun]]:
+    lines, uncs = consensus(page, runs, im.width, im.height, uid_start)
+    n = len([e for e, ls in runs.items() if ls])
+    disputed = disputed_lines(lines, uncs, n, getattr(cfg, "cascade_min_conf", 0.75))
+    audited = audit_sample(lines, disputed, getattr(cfg, "audit_rate", 0.0), seed)
+    to_read = [ln for ln in lines if ln.id in disputed | audited]
+    meta: list[EngineRun] = []
+    if not to_read or not strong:
+        return lines, uncs, meta
+    strong_readings: dict[str, dict[str, WireLine]] = {}
+    for eng in strong:
+        t0 = time.monotonic()
+        try:
+            strong_readings[eng.name] = read_crops(eng, im, to_read)
+            meta.append(EngineRun(engine=eng.name, model=eng.model, mode="cascade_lignes", ok=True,
+                                  seconds=round(time.monotonic() - t0, 1),
+                                  note=f"{len(to_read)} ligne(s) relue(s) sur {len(lines)}"))
+        except Exception as ex:  # noqa: BLE001
+            meta.append(EngineRun(engine=eng.name, model=eng.model, mode="cascade_lignes", ok=False, error=str(ex)))
+    if not strong_readings:
+        return lines, uncs, meta
+    uid = max([int(u.id[1:]) for u in uncs] + [uid_start - 1]) + 1
+    audit_disagree = 0
+    by_id = {ln.id: ln for ln in lines}
+    for ln in to_read:
+        group: dict[str, WireLine] = {}
+        anchor = None
+        for e, rd in strong_readings.items():
+            if ln.id in rd:
+                group[e] = rd[ln.id]
+                anchor = anchor or e
+        if anchor is None:
+            continue
+        for e, txt in ln.engine_readings.items():
+            group.setdefault(e, WireLine(bbox=[0, 0, 0, 0], text=txt, confidence=ln.confidence))
+        if ln.id in audited and any(normalize(g.text) != normalize(ln.text) for g in group.values()):
+            audit_disagree += 1
+        text, new_uncs, uid = line_uncertainties(ln.id, anchor, group, len(group), uid)
+        uncs = [u for u in uncs if u.line_id != ln.id] + new_uncs
+        agree = sum(1 for g in group.values() if normalize(g.text) == normalize(text))
+        by_id[ln.id].text = text
+        by_id[ln.id].confidence = round(min(g.confidence for g in group.values()) * agree / len(group), 3)
+        by_id[ln.id].engine_readings = {e: g.text for e, g in group.items()}
+    if audited:
+        meta.append(EngineRun(engine="audit", model="", mode="audit", ok=True,
+                              note=f"{audit_disagree} désaccord(s) sur {len(audited)} ligne(s) d'accord auditée(s)"))
+    uncs.sort(key=lambda u: int(u.id[1:]))
+    return lines, uncs, meta
+
+
 # -- Point d'entrée ----------------------------------------------------------------------------
+
+
+def meta_page_seed(path: Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcription:
@@ -319,7 +438,18 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
                 runs_meta.append(EngineRun(engine=spec, model="", mode="aveugle", ok=False, error=str(ex)))
         if not any(runs.values()):
             raise EngineError("aucun moteur OCR n'a répondu")
-        lines, uncs = consensus(pno, runs, im.width, im.height, uid_start=len(all_uncs) + 1)
+        if getattr(cfg, "ocr_mode", "ensemble") == "cascade":
+            strong = []
+            for spec in getattr(cfg, "ocr_strong", []) or []:
+                try:
+                    strong.append(make_engine(spec, cache))
+                except Exception as ex:  # noqa: BLE001
+                    runs_meta.append(EngineRun(engine=spec, model="", mode="cascade_lignes", ok=False, error=str(ex)))
+            lines, uncs, meta = cascade_page(pno, im, runs, strong, cfg, seed=meta_page_seed(path),
+                                             uid_start=len(all_uncs) + 1)
+            runs_meta += meta
+        else:
+            lines, uncs = consensus(pno, runs, im.width, im.height, uid_start=len(all_uncs) + 1)
         if cfg.reasoning_engine:
             try:
                 adjudicate(make_engine(cfg.reasoning_engine, cache), ref, im, lines, uncs)
@@ -329,6 +459,8 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
         all_lines += lines
         all_uncs += uncs
     ok = [r.engine for r in runs_meta if r.ok and r.mode == "aveugle"]
+    cascade = [r.engine for r in runs_meta if r.ok and r.mode == "cascade_lignes"]
     return Transcription(pages=pages, lines=all_lines, uncertainties=all_uncs, engines=runs_meta,
                          provenance=f"Consensus de {len(ok)} moteur(s) en lecture aveugle ({', '.join(ok)})"
+                                    + (f", lignes disputées relues en zoom par {', '.join(cascade)}" if cascade else "")
                                     + (f", arbitrage par {cfg.reasoning_engine}" if cfg.reasoning_engine else "") + ".")

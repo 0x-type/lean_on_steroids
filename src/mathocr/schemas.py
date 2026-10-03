@@ -97,10 +97,11 @@ class TranscribedLine(BaseModel):
 class EngineRun(BaseModel):
     engine: str
     model: str
-    mode: Literal["aveugle", "avec_contexte", "arbitrage", "fixture"]
+    mode: Literal["aveugle", "avec_contexte", "arbitrage", "fixture", "cascade_lignes", "audit"]
     ok: bool
     error: str | None = None
     seconds: float | None = None
+    note: str | None = None
 
 
 class Transcription(BaseModel):

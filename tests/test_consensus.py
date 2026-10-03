@@ -33,3 +33,12 @@ def test_line_missed_by_anchor_is_kept_with_low_confidence():
     lines, _ = consensus(1, {"A": a, "B": b}, 1000, 1000)
     assert len(lines) == 2
     assert lines[1].confidence < 0.5
+
+
+def test_outvoted_anchor_is_replaced_by_majority_in_line_text():
+    a = [WireLine(bbox=[100, 100, 900, 150], text=r"$= n^2 + (2n-1)$", confidence=0.9)]
+    b = [WireLine(bbox=[100, 100, 900, 150], text=r"$= n^2 + (2n+1)$", confidence=0.9)]
+    c = [WireLine(bbox=[100, 100, 900, 150], text=r"$= n^2 + (2n+1)$", confidence=0.9)]
+    lines, uncs = consensus(1, {"A": a, "B": b, "C": c}, 1000, 1000)
+    assert "(2n+1)" in lines[0].text
+    assert uncs[0].chosen == "+" and uncs[0].readings[1].text == "-"

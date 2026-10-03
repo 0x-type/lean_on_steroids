@@ -43,6 +43,12 @@ class PipelineConfig:
     lean_memory_mb: int = 8192
     # Moteurs (voir mathocr.llm) ; vides = mode hors-ligne (fixtures obligatoires).
     ocr_engines: list[str] = field(default_factory=list)
+    # Mode « cascade » : ocr_engines (bon marché) lisent la page ; seules les lignes disputées
+    # sont relues, zoomées, par ocr_strong. audit_rate : part des lignes d'accord relues quand même.
+    ocr_mode: str = "ensemble"
+    ocr_strong: list[str] = field(default_factory=list)
+    cascade_min_conf: float = 0.75
+    audit_rate: float = 0.0
     reasoning_engine: str | None = None  # structure, formalisation, niveau 2, arbitrage
     judge_engine: str | None = None  # rétro-traduction (idéalement un autre fournisseur)
     cache_dir: Path = Path("runs/.cache")

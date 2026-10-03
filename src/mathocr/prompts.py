@@ -142,3 +142,9 @@ réponds `equivalent` (vrai/faux) et explique brièvement.
 FEEDBACK_SYSTEM = """Tu reformules un retour de correction destiné à un élève (français, bienveillant, \
 précis, tutoiement). Tu n'ajoutes AUCUN fait : tu n'utilises que les éléments fournis, sans changer \
 l'issue ni les étapes citées."""
+
+OCR_CROPS_TASK = """Chaque image jointe est UNE ligne zoomée d'une copie manuscrite ; son étiquette est \
+l'identifiant de la ligne. Transcris chaque ligne avec les mêmes règles que pour une page entière : \
+texte tel quel, mathématiques en LaTeX entre $…$, aucune correction, fragments ambigus déclarés dans \
+`uncertain` (span = sous-chaîne exacte de `text`, alternatives avec probabilités, raison tirée du tracé). \
+Réponds avec un élément par identifiant, dans l'ordre."""
