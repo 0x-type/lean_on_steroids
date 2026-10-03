@@ -6,3 +6,4 @@ lean_workspace/.lake/
 runs/
 .env
 *.bundle
+examples/collecte/photos/
