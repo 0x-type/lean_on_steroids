@@ -242,7 +242,7 @@ class WireTier2(BaseModel):
 
 
 def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lean: LeanReport,
-                   cfg, memory=None) -> Formalization:
+                   cfg, memory=None, engine: str | None = None, only: set[str] | None = None) -> Formalization:
     from ..memory import StepMemory
 
     gen = LeanGenerator(ref, st, fm)
@@ -250,7 +250,7 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
                      + f" : Prop := {f.def_body}" for f in fm.steps if f.role == "def")
     fm = fm.model_copy(deep=True)
     for c in lean.steps:
-        if c.status != "non_verifie":
+        if c.status != "non_verifie" or (only is not None and c.step_id not in only):
             continue
         f = fm.of(c.step_id)
         binders = " ".join(f"({n} : {t})" for n, t in gen._step_binders(c.step_id))
@@ -258,7 +258,7 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
         if hit is not None:
             f.agent_proof, f.agent_refutation = hit.get("proof"), hit.get("refutation")
             continue
-        eng = _engine(cfg)
+        eng = _engine(cfg, engine)
         out = eng.structured(prompts.TIER2_SYSTEM,
                              prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
                                                        binders=binders, claim=f.claim, defs=defs or "(aucune)"),

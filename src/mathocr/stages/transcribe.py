@@ -287,6 +287,8 @@ def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engi
     replacements = []
     for (s0, s1), readings in sorted(spans.items()):
         a_seg = a_norm[s0:s1]
+        if len({_layout_key(t) for t in readings}) == 1:
+            continue  # mise en page seule ($, &, sauts de rangée) : aucun effet sur les mathématiques
         for e, g in group.items():
             if normalize(g.text) == a_norm:
                 readings[a_seg].add(e)
@@ -324,6 +326,14 @@ def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engi
 
 
 _LAYOUT = re.compile(r"\\(?:begin|end)\{[a-z*]+\}|\\text|\\sout|\\\\|[${}&\s]")
+
+
+_LAYOUT_ONLY = re.compile(r"\\(?:begin|end)\{(?:cases|array|aligned|matrix)\}|\\\\|[$&\s]")
+
+
+def _layout_key(text: str) -> str:
+    """Fragment sans délimiteurs de mise en page ; les accolades, qui changent le sens, restent."""
+    return _LAYOUT_ONLY.sub("", text)
 
 
 def _skeleton(text: str) -> str:

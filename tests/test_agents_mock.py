@@ -89,3 +89,24 @@ def test_full_llm_path_with_fake_engines(tmp_path, fake):
     u = next(u for u in r.transcription.uncertainties if u.line_id.endswith("L12") or "L1" in u.line_id)
     assert u.readings[0].text == "+" and "arbitre:fake:R" in u.readings[0].support
     assert r.verdict.verdict == Verdict.verified, r.verdict.blocking_issues
+
+
+def test_tier2_uses_given_engine_and_only_selected_steps(monkeypatch):
+    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+                                 SourceRef, StepCheck, StepFormal)
+    ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
+    st = PS(steps=[ProofStep(id=i, kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])
+                   for i in ("s1", "s2")], scopes=[], pattern={"kind": "aucun"})
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id=i, role="prop", claim="1 = 1") for i in ("s1", "s2")])
+    lean = LeanReport(file="", steps=[StepCheck(step_id=i, decl=i, status="non_verifie") for i in ("s1", "s2")])
+    used = []
+
+    class E:
+        def structured(self, system, text, images, schema, **kw):
+            return agents.WireTier2(proof="rfl")
+
+    monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: used.append(spec) or E())
+    out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="fort"), engine="bon_marche",
+                                only={"s2"})
+    assert used == ["bon_marche"]
+    assert out.of("s1").agent_proof is None and out.of("s2").agent_proof == "rfl"

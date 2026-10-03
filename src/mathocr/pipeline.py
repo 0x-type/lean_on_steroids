@@ -57,6 +57,12 @@ class PipelineConfig:
     photo_gate: bool = True  # refuser localement les photos inutilisables avant tout appel payant
     lazy_judge: bool = True  # arbitre seulement sur les doutes qui peuvent changer le verdict
     tier2: bool = True
+    # Niveau 2 (preuve / réfutation d'une étape par un agent) : Lean contrôle chaque preuve proposée,
+    # un modèle bon marché ne peut donc pas fausser le verdict. Les étapes qu'il ne tranche pas sont
+    # retentées par `reasoning_engine` (au plus `tier2_fallback_max`), car seule une réfutation
+    # peut encore changer l'issue.
+    tier2_engine: str | None = None  # None = reasoning_engine
+    tier2_fallback_max: int = 3
     polish_feedback: bool = False
 
 
@@ -144,10 +150,18 @@ def _run(
         broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
         if cfg.tier2 and cfg.reasoning_engine and not broken and any(c.status == "non_verifie" for c in lean.steps):
             from .stages.agents import tier2_attempts
-            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory)
+            cheap = cfg.tier2_engine or cfg.reasoning_engine
+            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory, engine=cheap)
             _save(out_dir, "3b_formalisation_niveau2.json", fm)
             lean, evals = verify(ref, st, fm, scfg, out_dir)
             lean_seconds += lean.run.seconds if lean.run else 0.0
+            left = [c.step_id for c in lean.steps if c.status == "non_verifie"][:cfg.tier2_fallback_max]
+            if left and cheap != cfg.reasoning_engine and cfg.tier2_fallback_max > 0:
+                fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=cfg.reasoning_engine,
+                                    only=set(left))
+                _save(out_dir, "3b_formalisation_niveau2.json", fm)
+                lean, evals = verify(ref, st, fm, scfg, out_dir)
+                lean_seconds += lean.run.seconds if lean.run else 0.0
         _save(out_dir, "4_lean.json", lean)
 
         set_stage("fidélité")

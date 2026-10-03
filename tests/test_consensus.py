@@ -87,3 +87,14 @@ def test_split_line_is_not_duplicated():
          WireLine(bbox=[100, 600, 500, 650], text="$x = 1$", confidence=0.9)]
     lines, _ = consensus(1, {"A": a, "B": b}, 1000, 1000)
     assert [ln.text for ln in lines][1:] == ["$x = 1$"]  # le vrai manque reste signalé
+
+
+def test_layout_only_divergence_is_not_a_doubt():
+    a = [WireLine(bbox=[100, 100, 900, 160], text=r"$\begin{cases} x=1 & \to 0 \end{cases}$", confidence=0.9)]
+    b = [WireLine(bbox=[100, 100, 900, 160], text=r"$\begin{cases} x=1 \to 0 \end{cases}$", confidence=0.9)]
+    _, uncs = consensus(1, {"A": a, "B": b}, 1000, 1000)
+    assert uncs == []
+    c = [WireLine(bbox=[100, 100, 900, 160], text=r"$x^{n+1}$", confidence=0.9)]
+    d = [WireLine(bbox=[100, 100, 900, 160], text=r"$x^n+1$", confidence=0.9)]
+    _, uncs = consensus(1, {"C": c, "D": d}, 1000, 1000)
+    assert uncs  # les accolades changent le sens : le doute reste
