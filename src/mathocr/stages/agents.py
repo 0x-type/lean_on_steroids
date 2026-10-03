@@ -118,6 +118,35 @@ def _sandbox(cfg) -> SandboxConfig:
 
 
 def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cfg) -> Formalization:
+    """Traduction déterministe d'abord ; l'agent ne reçoit que les étapes que le code refuse."""
+    from .latex2lean import translate_structure
+
+    det = translate_structure(ref, st)
+    fm = det.formalization
+    if not det.failed:
+        return fm
+    if not cfg.reasoning_engine:
+        # Pas d'agent : les étapes non traduites restent non formalisées (la fidélité le signalera).
+        known = {f.step_id for f in fm.steps}
+        for sid, why in det.failed.items():
+            if sid not in known:
+                fm.steps.append(StepFormal(step_id=sid, role="none",
+                                           not_formalized_reason=f"traduction automatique impossible : {why}"))
+        fm.steps.sort(key=lambda f: [s.id for s in st.steps].index(f.step_id))
+        return fm
+    llm = _formalize_llm(ref, st, cfg, only=det.failed, done=fm)
+    by_id = {f.step_id: f for f in fm.steps}
+    for f in llm.steps:
+        if f.step_id in det.failed:
+            by_id[f.step_id] = f
+    order = [s.id for s in st.steps]
+    steps = sorted(by_id.values(), key=lambda f: order.index(f.step_id) if f.step_id in order else len(order))
+    return Formalization(scopes=fm.scopes or llm.scopes, steps=steps,
+                         provenance=f"{fm.provenance} ; {len(det.failed)} étape(s) par {llm.provenance}")
+
+
+def _formalize_llm(ref: ReferenceStatement, st: ProofStructure, cfg, *, only: dict[str, str] | None = None,
+                   done: Formalization | None = None) -> Formalization:
     eng = _engine(cfg)
     steps = "\n".join(
         f"- {s.id} [{s.kind}, portée {s.scope}{', implicite ' + s.implicit_reason if s.implicit else ''}] "
@@ -128,18 +157,35 @@ def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cf
     scopes = "; ".join(f"{sc.id} (variables {sc.variables}, hypothèses {sc.assumptions})" for sc in st.scopes)
     task = prompts.FORMALIZE_TASK.format(statement=ref.statement_latex, lean_statement=ref.lean_statement,
                                          opens=", ".join(ref.lean_opens), steps=steps, scopes=scopes)
+    if only and done:
+        ctx = "\n".join(f"- {f.step_id} : " + (f"def {f.def_name} := {f.def_body}" if f.role == "def"
+                                                 else (f.claim or f"(non formalisée : {f.not_formalized_reason})"))
+                         for f in done.steps)
+        task += ("\n\nCes étapes sont DÉJÀ formalisées (ne pas les refaire, réutiliser leurs noms) :\n" + ctx
+                 + "\n\nFormalise UNIQUEMENT : " + ", ".join(f"{k} ({v})" for k, v in only.items()))
     w = eng.structured(prompts.FORMALIZE_SYSTEM, task, [], WireFormalization)
-    fm = _to_formal(w, f"formalisé par {eng.name}")
+    fm = _to_formal(w, f"agent {eng.name}")
+    merged = lambda f: _merge_partial(f, done, only)  # noqa: E731
     for _ in range(MAX_REPAIRS):
-        problems = _formal_problems(ref, st, fm, cfg)
+        problems = _formal_problems(ref, st, merged(fm), cfg)
         if not problems:
             break
         w = eng.structured(prompts.FORMALIZE_SYSTEM,
                            task + "\n\nTa réponse précédente :\n" + w.model_dump_json()
                            + "\n\nErreurs de compilation / de politique (corrige la syntaxe Lean, PAS le sens "
                              "mathématique de la copie) :\n" + "\n".join(problems), [], WireFormalization)
-        fm = _to_formal(w, f"formalisé par {eng.name} (après réparation syntaxique)")
+        fm = _to_formal(w, f"agent {eng.name} (après réparation syntaxique)")
     return fm
+
+
+def _merge_partial(llm: Formalization, done: Formalization | None, only: dict | None) -> Formalization:
+    if not done or not only:
+        return llm
+    by_id = {f.step_id: f for f in done.steps}
+    for f in llm.steps:
+        if f.step_id in only:
+            by_id[f.step_id] = f
+    return Formalization(scopes=done.scopes or llm.scopes, steps=list(by_id.values()), provenance=llm.provenance)
 
 
 def _formal_problems(ref, st, fm, cfg) -> list[str]:

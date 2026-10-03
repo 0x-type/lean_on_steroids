@@ -81,10 +81,11 @@ def test_full_llm_path_with_fake_engines(tmp_path, fake):
     cfg = PipelineConfig(workspace=ROOT / "lean_workspace", ocr_engines=["fake:A", "fake:B"],
                          reasoning_engine="fake:R", cache_dir=tmp_path / "cache")
     r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / "out", cfg)
-    # Deux lectures aveugles, un arbitrage, structure réparée une fois, une formalisation.
+    # Deux lectures aveugles, un arbitrage, structure réparée une fois ; aucune formalisation
+    # par l'agent : toutes les étapes de cette copie se traduisent sans LLM.
     kinds = [k for _, k in fake]
     assert kinds.count("WirePage") == 2 and kinds.count("WireDecisions") == 1
-    assert kinds.count("ProofStructure") == 2 and kinds.count("WireFormalization") == 1
+    assert kinds.count("ProofStructure") == 2 and kinds.count("WireFormalization") == 0
     u = next(u for u in r.transcription.uncertainties if u.line_id.endswith("L12") or "L1" in u.line_id)
     assert u.readings[0].text == "+" and "arbitre:fake:R" in u.readings[0].support
     assert r.verdict.verdict == Verdict.verified, r.verdict.blocking_issues

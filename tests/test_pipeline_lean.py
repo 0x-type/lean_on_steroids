@@ -72,3 +72,25 @@ def test_unvalidated_statement_never_verified(tmp_path):
             transcription=EX / "fixtures" / "transcription.json", structure=EX / "fixtures" / "structure.json",
             formalization=EX / "fixtures" / "formalization.json")
     assert r.verdict.verdict == Verdict.review
+
+
+# Avec la traduction déterministe, la variante « formalisation infidèle » disparaît :
+# le code traduit ce que l'élève a écrit, donc l'erreur est établie.
+DETERMINISTIC_EXPECTED = {
+    "fixtures": "raisonnement vérifié",
+    "erreur_calcul": "erreur mathématique établie",
+    "formalisation_infidele": "erreur mathématique établie",
+    "lecture_ambigue": "examen nécessaire",
+    "saut_logique": "examen nécessaire",
+}
+
+
+@needs_lean
+@pytest.mark.lean
+@pytest.mark.parametrize("case", sorted(DETERMINISTIC_EXPECTED))
+def test_deterministic_formalization_verdicts(tmp_path, case):
+    d = EX / case if case == "fixtures" else EX / "variantes" / case
+    r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path, PipelineConfig(workspace=ROOT / "lean_workspace"),
+            transcription=d / "transcription.json", structure=d / "structure.json")
+    assert r.formalization.provenance.startswith("traduction déterministe")
+    assert r.verdict.verdict.value == DETERMINISTIC_EXPECTED[case], r.verdict.blocking_issues
