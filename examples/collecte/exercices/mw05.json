@@ -1,0 +1,15 @@
+{
+ "exercise_id": "mw05_trace_determinant",
+ "statement_latex": "Soit $E$ un espace vectoriel de dimension $n>0$ et $\\mathcal{B}=(e_1,\\dots,e_n)$ une base de $E$ . On considère un $n$ -uplet $(v_1,\\dots,v_n)$ d’éléments de $E$ et $f\\in\\mathcal{L}(E)$ , montrer que: $\\sum_{i=1}^n \\det_{\\mathcal{B}}(v_1,\\dots,v_{i-1},f(v_i),v_{i+1},\\dots,v_n)=\\mathrm{Tr}(f)\\cdot \\det_{\\mathcal{B}}(v_1,\\dots,v_n).$ où $\\det_{\\mathcal{B}}$ est le déterminant dans la base $\\mathcal{B}$ et $\\mathrm{Tr}$ est la trace .",
+ "notes_latex": "Source : Math Woods (https://mathwoods.org/problems/entre-trace-et-determinant), licence CC BY-NC-SA 4.0.",
+ "lean_imports": [
+  "MathOCRCheck.Prelude",
+  "Mathlib.LinearAlgebra.Trace",
+  "Mathlib.LinearAlgebra.Determinant"
+ ],
+ "lean_opens": [
+  "Finset"
+ ],
+ "lean_statement": "∀ (n : ℕ) (f : (Fin n → ℝ) →ₗ[ℝ] (Fin n → ℝ)) (v : Fin n → Fin n → ℝ), ∑ i, (Pi.basisFun ℝ (Fin n)).det (Function.update v i (f (v i))) = LinearMap.trace ℝ (Fin n → ℝ) f * (Pi.basisFun ℝ (Fin n)).det v",
+ "validated_by": "proposée par l'assistant, bien typée en Lean mais NON démontrée ; à faire valider par un enseignant"
+}

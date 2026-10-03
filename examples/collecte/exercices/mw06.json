@@ -1,0 +1,15 @@
+{
+ "exercise_id": "mw06_tvi_constante",
+ "statement_latex": "Soient $f\\colon\\R\\to\\R$ une fonction continue et $a \\in \\R^{+}$ tels que : $\\forall x \\in \\R, f(x)^{2}=a$ . Montrer que $f$ est constante.",
+ "notes_latex": "Source : Math Woods (https://mathwoods.org/problems/application-du-tvi-a-une-equation-fonctionnelle), licence CC BY-NC-SA 4.0.",
+ "lean_imports": [
+  "MathOCRCheck.Prelude",
+  "Mathlib.Topology.Order.IntermediateValue",
+  "Mathlib.Topology.Instances.Real.Lemmas"
+ ],
+ "lean_opens": [
+  "Finset"
+ ],
+ "lean_statement": "∀ (f : ℝ → ℝ) (a : ℝ), Continuous f → 0 ≤ a → (∀ x, f x ^ 2 = a) → ∀ x y, f x = f y",
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+}

@@ -1,0 +1,14 @@
+{
+ "exercise_id": "mw01_sigma_multiplicative",
+ "statement_latex": "Soit $\\sigma$ la fonction arithmétique qui renvoie la somme des diviseurs positifs d’un entier. C’est-à-dire que, pour tout $n \\in \\N^{*}$ , on a $\\sigma(n) = \\sum_{d \\mid n}d.$ Démontrer que $\\sigma$ est multiplicative .",
+ "notes_latex": "Source : Math Woods (https://mathwoods.org/problems/sur-la-multiplicativite-de-sigma), licence CC BY-NC-SA 4.0.",
+ "lean_imports": [
+  "MathOCRCheck.Prelude",
+  "Mathlib.NumberTheory.ArithmeticFunction.Misc"
+ ],
+ "lean_opens": [
+  "Finset"
+ ],
+ "lean_statement": "∀ a b : ℕ, Nat.Coprime a b → ∑ d ∈ (a * b).divisors, d = (∑ d ∈ a.divisors, d) * (∑ d ∈ b.divisors, d)",
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+}
