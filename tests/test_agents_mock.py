@@ -103,12 +103,17 @@ def test_tier2_uses_given_engine_and_only_selected_steps(monkeypatch):
 
     class E:
         def structured(self, system, text, images, schema, **kw):
+            from mathocr.llm.pricing import record
+            record(engine="e", model="m", input_tokens=1, output_tokens=1, cost_usd=0.5)
             return agents.WireTier2(proof="rfl")
 
     monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: used.append(spec) or E())
-    out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="fort"), engine="bon_marche",
-                                only={"s2"})
+    from mathocr.llm.pricing import ledger_scope
+    with ledger_scope() as led:
+        out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="fort"),
+                                    engine="bon_marche", only={"s2"})
     assert used == ["bon_marche"]
+    assert led.report().total_usd == 0.5  # le coût d'un appel fait dans un fil parallèle est compté
     assert out.of("s1").agent_proof is None and out.of("s2").agent_proof == "rfl"
 
 

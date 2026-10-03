@@ -249,6 +249,7 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
     defs = "\n".join(f"def {f.def_name} " + " ".join(f"({b.name} : {b.type})" for b in f.def_binders)
                      + f" : Prop := {f.def_body}" for f in fm.steps if f.role == "def")
     fm = fm.model_copy(deep=True)
+    todo = []
     for c in lean.steps:
         if c.status != "non_verifie" or (only is not None and c.step_id not in only):
             continue
@@ -258,13 +259,25 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
         if hit is not None:
             f.agent_proof, f.agent_refutation = hit.get("proof"), hit.get("refutation")
             continue
-        eng = _engine(cfg, engine)
-        out = eng.structured(prompts.TIER2_SYSTEM,
-                             prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
-                                                       binders=binders, claim=f.claim, defs=defs or "(aucune)"),
-                             [], WireTier2)
-        f.agent_proof = _admissible(out.proof, f"étape {c.step_id} (preuve agent)")
-        f.agent_refutation = _admissible(out.refutation, f"étape {c.step_id} (réfutation agent)")
+        todo.append((c.step_id, f, prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
+                                                             binders=binders, claim=f.claim,
+                                                             defs=defs or "(aucune)")))
+
+    def attempt(task):
+        sid, f, text = task
+        out = _engine(cfg, engine).structured(prompts.TIER2_SYSTEM, text, [], WireTier2)
+        f.agent_proof = _admissible(out.proof, f"étape {sid} (preuve agent)")
+        f.agent_refutation = _admissible(out.refutation, f"étape {sid} (réfutation agent)")
+
+    # Étapes indépendantes : appels en parallèle (la durée est celle du plus lent, pas la somme).
+    # Chaque fil reçoit une copie du contexte pour que le compteur de coûts suive.
+    if todo:
+        import contextvars
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(len(todo), getattr(cfg, "tier2_parallel", 8))) as pool:
+            for fut in [pool.submit(contextvars.copy_context().run, attempt, t) for t in todo]:
+                fut.result()
     return fm
 
 

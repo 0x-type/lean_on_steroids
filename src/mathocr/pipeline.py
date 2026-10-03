@@ -63,6 +63,7 @@ class PipelineConfig:
     # peut encore changer l'issue.
     tier2_engine: str | None = None  # None = reasoning_engine
     tier2_fallback_max: int = 3
+    tier2_parallel: int = 8  # appels de niveau 2 simultanés
     polish_feedback: bool = False
 
 
