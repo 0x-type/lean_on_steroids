@@ -110,3 +110,9 @@ def test_tier2_uses_given_engine_and_only_selected_steps(monkeypatch):
                                 only={"s2"})
     assert used == ["bon_marche"]
     assert out.of("s1").agent_proof is None and out.of("s2").agent_proof == "rfl"
+
+
+def test_inadmissible_tier2_fragment_is_dropped_not_fatal():
+    assert agents._admissible("  norm_num  ", "x") == "norm_num"
+    assert agents._admissible("sorry", "x") is None
+    assert agents._admissible("", "x") is None

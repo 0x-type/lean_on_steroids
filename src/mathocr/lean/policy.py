@@ -110,7 +110,9 @@ def check_fragment(fragment: str, where: str, *, multiline: bool = False) -> lis
     out: list[PolicyViolation] = []
     if not multiline and ("\n" in fragment or "\r" in fragment):
         out.append(PolicyViolation(where=where, token="\\n", detail="un terme doit tenir sur une ligne"))
-    if len(fragment) > 4000:
+    # Un terme tient sur une ligne ; une preuve tactique d'agent peut être longue (Lean borne de toute
+    # façon le temps et la mémoire), mais pas démesurée.
+    if len(fragment) > (16000 if multiline else 4000):
         out.append(PolicyViolation(where=where, token="<longueur>", detail="fragment trop long"))
     for ident in _identifiers(fragment):
         if ident in FORBIDDEN_WORDS:

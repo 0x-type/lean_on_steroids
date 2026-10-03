@@ -263,9 +263,24 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
                              prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
                                                        binders=binders, claim=f.claim, defs=defs or "(aucune)"),
                              [], WireTier2)
-        f.agent_proof = out.proof.strip() or None
-        f.agent_refutation = out.refutation.strip() or None
+        f.agent_proof = _admissible(out.proof, f"étape {c.step_id} (preuve agent)")
+        f.agent_refutation = _admissible(out.refutation, f"étape {c.step_id} (réfutation agent)")
     return fm
+
+
+def _admissible(fragment: str, where: str) -> str | None:
+    """Une tentative de niveau 2 refusée par la politique est écartée (l'étape reste non vérifiée)
+    au lieu d'empêcher Lean de vérifier tout le reste de la copie."""
+    from ..lean.policy import check_fragment
+
+    fragment = fragment.strip()
+    if not fragment:
+        return None
+    bad = check_fragment(fragment, where, multiline=True)
+    if bad:
+        log.warning("niveau 2 écarté (%s) : %s", where, "; ".join(f"{v.token} — {v.detail}" for v in bad))
+        return None
+    return fragment
 
 
 # ---------------------------------------------------------------------------
