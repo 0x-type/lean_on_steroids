@@ -47,3 +47,21 @@ def test_refusals_go_to_agent(bad):
 def test_real_variable_domain():
     c = T({"x": "ℝ"}).claim(r"x^2 \geq 0")
     assert c.lean == "x ^ 2 ≥ 0" and c.sides.value_type == "ℝ"
+
+
+def test_incoherent_reading_is_refused_not_quantified():
+    """Cas réel : l'arbitre avait renommé l'indice d'une somme sans renommer le terme."""
+    import json
+
+    from conftest import EX
+    from mathocr.schemas import ProofStructure, ReferenceStatement
+    from mathocr.stages.latex2lean import translate_structure
+
+    ref = ReferenceStatement(**json.loads((EX / "exercice.json").read_text()))
+    st = json.loads((EX / "fixtures" / "structure.json").read_text())
+    for s in st["steps"]:
+        if s["id"] in ("S01", "S08"):
+            s["statement"] = s["statement"].replace(r"\sum_{k=0}", r"\sum_{h=0}")
+    r = translate_structure(ref, ProofStructure(**st))
+    assert set(r.incoherent) == {"S01", "S08"} and not r.failed
+    assert "variable k non définie" in r.incoherent["S08"]

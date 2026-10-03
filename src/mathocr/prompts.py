@@ -133,7 +133,11 @@ Pour chaque énoncé ci-dessous, donne sa traduction en LaTeX la plus littérale
 
 COMPARE_SYSTEM = """Tu compares deux formulations mathématiques et tu dis si elles affirment exactement la \
 même chose (mêmes objets, mêmes bornes, même relation). Une différence de notation n'est pas une \
-différence ; une borne, un signe, un terme ou un quantificateur différent en est une."""
+différence ; une borne, un signe, un terme ou un quantificateur différent en est une.
+Conventions de la copie : une variable libre dans une conclusion (« alors Σ = n² ») est implicitement \
+quantifiée universellement, donc « ∀ n » explicite n'est pas une différence ; le nom d'une variable \
+muette (indice de somme k ou h) n'est pas une différence ; « P(n) est vraie » et la formule de P(n) \
+dépliée sont équivalentes."""
 
 COMPARE_TASK = """Pour chaque paire (copie de l'élève / relecture indépendante de la formalisation), \
 réponds `equivalent` (vrai/faux) et explique brièvement.

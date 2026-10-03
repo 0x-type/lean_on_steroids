@@ -94,3 +94,25 @@ def test_deterministic_formalization_verdicts(tmp_path, case):
             transcription=d / "transcription.json", structure=d / "structure.json")
     assert r.formalization.provenance.startswith("traduction déterministe")
     assert r.verdict.verdict.value == DETERMINISTIC_EXPECTED[case], r.verdict.blocking_issues
+
+
+@needs_lean
+@pytest.mark.lean
+def test_broken_definition_never_yields_a_conclusion(tmp_path):
+    """Cas réel (essai OpenRouter) : une définition qui ne compile pas avait permis une fausse
+    « erreur établie ». Une formalisation cassée doit toujours mener à « examen nécessaire »."""
+    fm = json.loads((EX / "fixtures" / "formalization.json").read_text())
+    s01 = next(s for s in fm["steps"] if s["step_id"] == "S01")
+    s01["def_body"] = "∑ h ∈ Finset.range n, (2 * k + 1) = n ^ 2"  # k inconnu
+    # Une « réfutation » d'agent qui ne tient que grâce à la définition cassée.
+    next(s for s in fm["steps"] if s["step_id"] == "S05")["agent_refutation"] = "intro h\nsimp_all [P]"
+    p = tmp_path / "fm.json"
+    p.write_text(json.dumps(fm, ensure_ascii=False))
+    r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / "out",
+            PipelineConfig(workspace=ROOT / "lean_workspace", memory_dir=None),
+            transcription=EX / "fixtures" / "transcription.json", structure=EX / "fixtures" / "structure.json",
+            formalization=p)
+    assert r.verdict.verdict == Verdict.review
+    assert not any(c.status in ("refute", "verifie_agent") for c in r.lean.steps)
+    assert not any(c.status == "verifie_elementaire" and "P" in (c.lean_snippet or "").split(":")[-1]
+                   for c in r.lean.steps if c.step_id in ("S05", "S14"))

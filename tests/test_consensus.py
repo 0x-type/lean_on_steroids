@@ -42,3 +42,9 @@ def test_outvoted_anchor_is_replaced_by_majority_in_line_text():
     lines, uncs = consensus(1, {"A": a, "B": b, "C": c}, 1000, 1000)
     assert "(2n+1)" in lines[0].text
     assert uncs[0].chosen == "+" and uncs[0].readings[1].text == "-"
+
+
+def test_letter_adjudication_renames_whole_line():
+    from mathocr.stages.transcribe import _rename_letter
+    assert _rename_letter(r"c-à-d $\sum_{k=0}^{n-1} (2k+1) = n^2$", "k", "h") == r"c-à-d $\sum_{h=0}^{n-1} (2h+1) = n^2$"
+    assert _rename_letter(r"$\ker k$ et k", "k", "h") == r"$\ker h$ et k"

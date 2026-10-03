@@ -218,7 +218,8 @@ def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engi
             chosen = sp.span if any(r.text == sp.span for r in rs) else rs[0].text
             rs.sort(key=lambda r: (r.text != chosen, -r.score))
             uncs.append(Uncertainty(id=f"U{uid:02d}", line_id=lid, span=sp.span, readings=rs, chosen=chosen,
-                                    reason=f"{e} : {sp.reason}", context_dependent=sp.context_based))
+                                    reason=f"{e} : {sp.reason}", context_dependent=sp.context_based,
+                                    replace_all=_is_letter(sp.span) and all(_is_letter(r.text) for r in rs)))
             uid += 1
     return text, uncs, uid
 
@@ -310,8 +311,20 @@ def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
         u.context_dependent = u.context_dependent or d.context_based
         if u.readings[0].text != u.chosen:
             ln = by_line[u.line_id]
-            ln.text = ln.text.replace(u.span, u.readings[0].text, 1)
-            u.chosen = u.span = u.readings[0].text
+            new = u.readings[0].text
+            if _is_letter(u.span) and _is_letter(new):
+                # Lettre de variable (k/h…) : on renomme TOUTES les occurrences de la ligne, sinon
+                # la formule devient incohérente (indice h, terme en k).
+                ln.text = _rename_letter(ln.text, u.span, new)
+                u.replace_all = True
+            elif ln.text.count(u.span) == 1:
+                ln.text = ln.text.replace(u.span, new, 1)
+            else:
+                # Fragment non unique : on ne sait pas quelle occurrence modifier ; on garde la lecture
+                # d'origine et le doute reste signalé.
+                u.reason += " ; arbitrage non appliqué (fragment présent plusieurs fois dans la ligne)"
+                continue
+            u.chosen = u.span = new
 
 
 # -- Cascade : accord d'abord, zoom sur les lignes disputées ---------------------------------
@@ -396,6 +409,17 @@ def cascade_page(page: int, im: Image.Image, runs: dict[str, list[WireLine]], st
                               note=f"{audit_disagree} désaccord(s) sur {len(audited)} ligne(s) d'accord auditée(s)"))
     uncs.sort(key=lambda u: int(u.id[1:]))
     return lines, uncs, meta
+
+
+def _is_letter(s: str) -> bool:
+    return re.fullmatch(r"[A-Za-z]", s.strip()) is not None
+
+
+def _rename_letter(text: str, old: str, new: str) -> str:
+    """Renomme une lettre de variable dans les parties mathématiques ($…$), hors commandes LaTeX."""
+    def fix(m):
+        return re.sub(rf"(?<![\\A-Za-z]){re.escape(old)}(?![A-Za-z])", new, m.group(0))
+    return re.sub(r"\$[^$]*\$", fix, text)
 
 
 # -- Point d'entrée ----------------------------------------------------------------------------

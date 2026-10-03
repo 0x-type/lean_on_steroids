@@ -136,7 +136,14 @@ def decide(
                            f"ajoutée pour la vérification, sans contenu nouveau.")
 
     # --- Erreur établie ? ---
+    # Une formalisation qui ne compile pas (définition ou énoncé) rend tout résultat Lean suspect :
+    # aucune erreur ne peut alors être « établie ».
     established = []
+    if formal_errors:
+        for c in refuted:
+            blocking.append(f"Étape {c.step_id} réfutée par Lean, mais la formalisation contient des erreurs : "
+                            f"réfutation non retenue.")
+        refuted = []
     for c in refuted:
         step = next((s for s in st.steps if s.id == c.step_id), None)
         faithful = c.step_id not in fid_bad and bool(fid_ok.get(c.step_id, set()) & {

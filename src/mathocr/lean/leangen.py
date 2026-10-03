@@ -222,7 +222,7 @@ class LeanGenerator:
             alts += [f"({u}; mathocr_core)", f"(intros; {u}; mathocr_core)"]
         return "by\n  first\n  | " + "\n  | ".join(alts)
 
-    def _induction_proof(self, sid: str) -> str:
+    def _induction_cases(self, sid: str) -> tuple[str, list[str], list[str]]:
         f = self.fm.of(sid)
         hs = [f"h_{u}" for u in f.uses if (self._formal(u) and self._formal(u).role not in ("def", "none"))]
         var = self.st.pattern.variable or "n"
@@ -231,11 +231,23 @@ class LeanGenerator:
         if self.defs:
             zero.append(f"({self._unfold()}; mathocr_core)")
             succ.append(f"({self._unfold()}; mathocr_core)")
+        return var, zero, succ
+
+    def _induction_proof(self, sid: str) -> str:
+        var, zero, succ = self._induction_cases(sid)
         return (
             f"by\n  intro {var}\n  induction {var} with\n"
             f"  | zero => first | " + " | ".join(zero) + "\n"
             f"  | succ {var} ih => first | " + " | ".join(succ)
         )
+
+    def _induction_inline(self, sid: str) -> str:
+        """Même gabarit sur une ligne, chaque cas entre parenthèses (sinon `| succ` serait lu
+        comme une alternative du `first` précédent)."""
+        var, zero, succ = self._induction_cases(sid)
+        return (f"((intro {var}; induction {var} with | zero => (first | {' | '.join(zero)}) "
+                f"| succ {var} ih => (first | {' | '.join(succ)})); "
+                f"trace \"mathocr:closed_by=schema_recurrence\")")
 
     def _refutation_proof(self, sid: str) -> tuple[str, str] | None:
         """(énoncé nié, preuve) : tente des contre-exemples aux points d'échantillonnage."""
@@ -310,6 +322,10 @@ class LeanGenerator:
             bsrc = " ".join(f"({n} : {t})" for n, t in binders)
             if step.implicit and step.implicit_reason == "schema_recurrence":
                 proof = self._induction_proof(step.id)
+            elif self.st.pattern.kind == "recurrence_simple" and step.id == self.st.pattern.conclusion_step:
+                # « P(0) et P(n) ⇒ P(n+1), alors … » : l'élève invoque explicitement le principe de
+                # récurrence pour conclure. Seul le gabarit de récurrence (de confiance) est ajouté.
+                proof = self._elementary_proof() + "\n  | " + self._induction_inline(step.id)
             else:
                 proof = self._elementary_proof()
             w.block("step", step.id, f"{NS}.{step.id}",
@@ -383,7 +399,9 @@ class LeanGenerator:
                         w.block("eval", f.step_id, None, f"open {NS} in #eval {call}",
                                 side=side, point=dict(zip([b.name for b in vs], pt)))
 
-        # Contrôle des axiomes : aucune dépendance hors {propext, Classical.choice, Quot.sound}.
-        for t in theorems:
+        # Contrôle des axiomes de TOUS les théorèmes générés (étapes, preuves et réfutations d'agents,
+        # sondes) : aucun résultat ne compte s'il dépend de sorryAx ou d'un axiome hors liste.
+        all_decls = [s.decl for s in w.segments if s.decl and s.kind not in ("def", "reference", "eval")]
+        for t in dict.fromkeys(theorems + all_decls):
             w.block("axioms", None, t, f"#print axioms {t}")
         return GeneratedLean("\n".join(w.lines) + "\n", w.segments, self.violations, theorems)

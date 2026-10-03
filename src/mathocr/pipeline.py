@@ -139,7 +139,8 @@ def _run(
     set_stage("lean")
     lean, evals = verify(ref, st, fm, scfg, out_dir)
     lean_seconds += lean.run.seconds if lean.run else 0.0
-    if cfg.tier2 and cfg.reasoning_engine and any(c.status == "non_verifie" for c in lean.steps):
+    broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
+    if cfg.tier2 and cfg.reasoning_engine and not broken and any(c.status == "non_verifie" for c in lean.steps):
         from .stages.agents import tier2_attempts
         fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory)
         _save(out_dir, "3b_formalisation_niveau2.json", fm)
@@ -149,7 +150,7 @@ def _run(
 
     # 5. Fidélité
     set_stage("fidélité")
-    fid = run_fidelity(tr, st, fm, lean, evals)
+    fid = run_fidelity(tr, st, fm, lean, evals, ref)
     if cfg.judge_engine:
         from .stages.agents import backtranslate
         fid += backtranslate(tr, st, fm, cfg)

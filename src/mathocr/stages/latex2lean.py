@@ -30,6 +30,11 @@ class TranslationError(Exception):
     pass
 
 
+class IncoherentReading(TranslationError):
+    """La formule lue n'a pas de sens (variable non définie…) : c'est la LECTURE qui est en cause.
+    On ne l'envoie pas à un agent, qui risquerait de « réparer » la copie ; examen humain."""
+
+
 # ---------------------------------------------------------------------------
 # Analyse lexicale
 # ---------------------------------------------------------------------------
@@ -528,6 +533,10 @@ class Translator:
             raise TranslationError("définition non reconnue (attendu « P(n) : … »)")
         name, var, body = m.group(1), m.group(2), m.group(3)
         c = self.claim(body)
+        loose = sorted(c.free - {var})
+        if loose:
+            raise IncoherentReading(f"lecture incohérente : variable {', '.join(loose)} non définie dans la "
+                                    f"définition de {name} (indice de somme mal relu ?)")
         return name, [Binder(name=var, type=self.var_types.get(var, "ℕ"))], c.lean, c.sides
 
 
@@ -547,13 +556,17 @@ def variable_types(ref: ReferenceStatement, st: ProofStructure) -> dict[str, str
     for s in st.steps:
         for m in re.finditer(r"([A-Za-z])\s*\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ)", s.statement):
             types.setdefault(m.group(1), TYPES[m.group(2)])
+    for sc in st.scopes:
+        for v in sc.variables:
+            types.setdefault(v, "ℕ")
     return types
 
 
 @dataclass
 class TranslationResult:
     formalization: Formalization
-    failed: dict[str, str]  # étape -> raison
+    failed: dict[str, str]  # étape -> raison (traduisible par un agent)
+    incoherent: dict[str, str] = field(default_factory=dict)  # étape -> raison (lecture à revoir, pas d'agent)
 
 
 NOT_FORMALIZED = {"introduction": "introduction (pas une affirmation)", "annonce": "annonce du but",
@@ -570,6 +583,7 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
               for sc in st.scopes if sc.id != "global" and sc.variables]
     steps: list[StepFormal] = []
     failed: dict[str, str] = {}
+    incoherent: dict[str, str] = {}
     for s in st.steps:
         if s.kind in NOT_FORMALIZED:
             steps.append(StepFormal(step_id=s.id, role="none", not_formalized_reason=NOT_FORMALIZED[s.kind],
@@ -589,6 +603,11 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
                 bound_here |= set(scope_vars.get(sc, []))
                 sc = next((x.parent for x in st.scopes if x.id == sc), None)
             extra = sorted(c.free - bound_here)
+            unknown = [v for v in extra if v not in types]
+            if unknown:
+                raise IncoherentReading(
+                    f"lecture incohérente : variable {', '.join(unknown)} non définie dans la copie "
+                    f"(indice de somme mal relu ?)")
             lean = c.lean
             if extra:
                 lean = f"∀ {' '.join(f'({v} : {types.get(v, chr(8469))})' for v in extra)}, {lean}"
@@ -598,11 +617,16 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
                 arg_l = re.search(rf"{m.group(1)}\s*\(([^()]*)\)", _clean(s.statement))
                 pred = (m.group(1), arg_l.group(1) if arg_l else "")
             if s.kind == "hypothese":
-                steps.append(StepFormal(step_id=s.id, role="hyp", claim=lean, predicate_app=pred, origin="code"))
+                steps.append(StepFormal(step_id=s.id, role="hyp", claim=lean, predicate_app=pred, sides=c.sides,
+                                        origin="code"))
             else:
                 steps.append(StepFormal(step_id=s.id, role="prop", claim=lean, uses=uses, sides=c.sides,
                                         predicate_app=pred, origin="code"))
+        except IncoherentReading as ex:
+            incoherent[s.id] = str(ex)
+            steps.append(StepFormal(step_id=s.id, role="none", not_formalized_reason=str(ex), origin="code"))
         except TranslationError as ex:
             failed[s.id] = str(ex)
     return TranslationResult(Formalization(scopes=scopes, steps=steps,
-                                           provenance="traduction déterministe LaTeX → Lean (sans LLM)"), failed)
+                                           provenance="traduction déterministe LaTeX → Lean (sans LLM)"),
+                             failed, incoherent)

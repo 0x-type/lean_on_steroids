@@ -105,26 +105,27 @@ def interpret(
                           lean_lines=(seg.start, seg.end) if seg else None)
         if statement_errors:
             check.status = "erreur_formalisation"
-        elif not errs and "sorryAx" not in ax:
+        elif not errs and axioms_ok(axioms, decl):
             check.status = "verifie_elementaire"
             check.closed_by = _trace(seg, msgs, "mathocr:closed_by=") if seg else None
-            if step.implicit_reason == "schema_recurrence" and not check.closed_by:
+            if check.closed_by == "schema_recurrence" or (step.implicit_reason == "schema_recurrence"
+                                                           and not check.closed_by):
                 check.closed_by = "schéma de récurrence (gabarit)"
         else:
             agent = by_kind.get(("agent_proof", step.id))
-            if agent and not _errors(agent, msgs) and "sorryAx" not in axioms.get(f"Copie.{step.id}_agent", ["?"]):
+            if agent and not _errors(agent, msgs) and axioms_ok(axioms, agent.decl):
                 check.status = "verifie_agent"
                 check.closed_by = "preuve proposée par un agent (niveau 2)"
         # Réfutation (automatique ou proposée par un agent)
         for kind in ("refutation", "agent_refutation"):
             rs = by_kind.get((kind, step.id))
-            if rs and not _errors(rs, msgs):
+            if rs and not _errors(rs, msgs) and axioms_ok(axioms, rs.decl):
                 check.status = "refute"
                 check.counterexample = _trace(rs, msgs, "mathocr:cex=") or "réfutation proposée par un agent"
                 break
         sd = by_kind.get(("sans_dep", step.id))
         if sd is not None:
-            check.independent_of_deps = not _errors(sd, msgs)
+            check.independent_of_deps = not _errors(sd, msgs) and axioms_ok(axioms, sd.decl)
         checks.append(check)
 
     assembly_seg = by_kind.get(("assembly", structure.pattern.conclusion_step))
@@ -150,6 +151,15 @@ def interpret(
         key = tuple(sorted(s.meta["point"].items()))
         evals.setdefault(s.step_id, {}).setdefault(key, {})[s.meta["side"]] = val
     return checks, axioms, assembly_ok, statement_match, evals
+
+
+def axioms_ok(axioms: dict[str, list[str]], decl: str | None) -> bool:
+    """Vrai seulement si les axiomes de `decl` ont été imprimés et sont tous autorisés."""
+    from .policy import ALLOWED_AXIOMS
+
+    if not decl or decl not in axioms:
+        return False
+    return all(a in ALLOWED_AXIOMS for a in axioms[decl])
 
 
 def _is_statement_error(m: LeanMessage) -> bool:

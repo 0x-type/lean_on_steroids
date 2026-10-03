@@ -123,7 +123,7 @@ def check_structure(st: ProofStructure, fm: Formalization) -> list[FidelityCheck
         if f.role == "hyp" and step.kind != "hypothese":
             out.append(FidelityCheck(step_id=f.step_id, kind="structure", ok=False,
                                      detail="une affirmation de l'élève est traitée comme une hypothèse (elle ne serait pas vérifiée)"))
-        if f.role == "none" and step.kind in ("affirmation", "calcul", "conclusion"):
+        if f.role == "none" and step.kind in ("affirmation", "calcul", "conclusion", "definition", "hypothese"):
             out.append(FidelityCheck(step_id=f.step_id, kind="structure", ok=False,
                                      detail=f"affirmation non formalisée : {f.not_formalized_reason or 'sans raison'}"))
     formal_ids = {f.step_id for f in fm.steps}
@@ -153,6 +153,12 @@ def _sides_in_copy(f: StepFormal, st: ProofStructure, tr: Transcription) -> tupl
     """Les membres LaTeX déclarés figurent-ils dans la copie (lignes de l'étape ou de l'étape précédente d'une chaîne) ?"""
     step = st.step(f.step_id)
     line_ids = [r.line_id for r in step.source]
+    if step.implicit:
+        for d in step.depends_on:
+            try:
+                line_ids += [r.line_id for r in st.step(d).source]
+            except KeyError:
+                pass
     idx = [s.id for s in st.steps].index(step.id)
     if step.kind == "calcul" and idx > 0:
         line_ids += [r.line_id for r in st.steps[idx - 1].source]
@@ -219,7 +225,7 @@ def check_predicates(fm: Formalization, st: ProofStructure) -> list[FidelityChec
     if not names:
         return out
     for f in fm.steps:
-        if f.role not in ("prop", "hyp") or not f.claim or f.sides:
+        if f.role not in ("prop", "hyp") or not f.claim:
             continue
         step = st.step(f.step_id)
         if step.implicit:
@@ -228,6 +234,10 @@ def check_predicates(fm: Formalization, st: ProofStructure) -> list[FidelityChec
         lat = {p for p in _pred_apps_latex(excerpt) if p[0] in names}
         lean = _pred_apps_lean(f.claim, names)
         if not lat and not lean:
+            continue
+        if not lean and f.sides:
+            # « Supposons P(n), c-à-d … » formalisé sous forme dépliée : c'est l'empreinte
+            # numérique des membres qui contrôle la fidélité.
             continue
         ok = lat == lean
         out.append(FidelityCheck(
@@ -252,11 +262,44 @@ def _substitute(text: str, u: Uncertainty, alt: str) -> str:
 
 def _phrase_equivalent(a: str, b: str) -> bool:
     a, b = a.strip().lower(), b.strip().lower()
-    return a == b or any(a in grp and b in grp for grp in EQUIVALENT_PHRASES)
+    if a == b or any(a in grp and b in grp for grp in EQUIVALENT_PHRASES):
+        return True
+    strip = lambda x: x.removeprefix("est ").strip()  # noqa: E731
+    return any(strip(a) in {strip(g) for g in grp} and strip(b) in {strip(g) for g in grp}
+               for grp in EQUIVALENT_PHRASES)
+
+
+# Symboles qui introduisent une définition : « P(n) : … », « P(n) ⇔ … », « P(n) := … ».
+DEFINITION_CONNECTORS = {":", ":=", "=", r"\Leftrightarrow", r"\iff", r"\equiv", r":\Leftrightarrow", "⇔", "≡"}
+
+
+def _letters(latex: str) -> set[str]:
+    """Lettres-variables d'un fragment (repli quand SymPy ne sait pas l'analyser)."""
+    s = re.sub(r"\\(mathbb|mathrm|text|operatorname)\{[^}]*\}", " ", latex.replace("$", " "))
+    s = re.sub(r"\\[A-Za-z]+", " ", s)
+    return set(re.findall(r"(?<![A-Za-z])[A-Za-z](?![A-Za-z])", s))
+
+
+def _retranslate(ref, st: ProofStructure, sid: str, u: Uncertainty, alt: str) -> str | None:
+    """Énoncé Lean de l'étape `sid` si on adopte la lecture `alt` (traducteur déterministe), sinon None."""
+    if ref is None:
+        return None
+    from .latex2lean import translate_structure
+
+    st2 = st.model_copy(deep=True)
+    step = st2.step(sid)
+    if u.chosen not in step.statement:
+        return None
+    step.statement = _substitute(step.statement, u, alt)
+    r = translate_structure(ref, st2)
+    if sid in r.failed or sid in r.incoherent:
+        return None
+    f = next((x for x in r.formalization.steps if x.step_id == sid), None)
+    return f.claim or f.def_body if f else None
 
 
 def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalization,
-                          lean_evals: dict) -> list[FidelityCheck]:
+                          lean_evals: dict, ref=None) -> list[FidelityCheck]:
     out = []
     defs = {f.def_name for f in fm.steps if f.role == "def" and f.def_name}
     for u in tr.uncertainties:
@@ -276,6 +319,10 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
         if not formal_affected:
             verdicts.append((False, "n'affecte aucune étape formalisée"))
         for alt in alts:
+            if formal_affected and all(f.role == "def" for _, f in formal_affected) \
+                    and u.chosen.strip() in DEFINITION_CONNECTORS and alt.text.strip() in DEFINITION_CONNECTORS:
+                verdicts.append((False, f"« {alt.text} » : même définition (notation du symbole de définition)"))
+                continue
             in_math = any(u.chosen in seg for seg in _math_segments(tr.line(u.line_id).text)) or "\\" in u.chosen
             if not in_math:
                 if _phrase_equivalent(u.chosen, alt.text):
@@ -293,10 +340,10 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
             for sc in fm.scopes:
                 allowed |= {b.name for b in sc.binders}
             try:
-                syms = free_symbols(alt.text)
-                syms_chosen = free_symbols(u.chosen)
+                syms = free_symbols(alt.text.replace("$", ""))
+                syms_chosen = free_symbols(u.chosen.replace("$", ""))
             except LatexEvalError:
-                syms, syms_chosen = None, None
+                syms, syms_chosen = _letters(alt.text), _letters(u.chosen)
             renaming = u.replace_all and re.fullmatch(r"[A-Za-z]", u.chosen) is not None
             if syms is not None and not renaming:
                 unknown = syms - allowed - syms_chosen
@@ -339,8 +386,23 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
                 verdicts.append((blocking, f"« {alt.text} » : changerait la valeur de l'étape"
                                  + ("" if blocking else f" mais lecture peu probable ({alt.score:.2f})")))
             else:
-                verdicts.append((bool(formal_affected),
-                                 f"« {alt.text} » : effet sur la formalisation non déterminable automatiquement"))
+                # Re-traduire l'étape avec la lecture alternative et comparer les énoncés Lean.
+                same, differs = [], []
+                for s_, f_ in formal_affected:
+                    alt_claim = _retranslate(ref, st, s_.id, u, alt.text)
+                    if alt_claim is None:
+                        differs = None
+                        break
+                    (same if alt_claim == (f_.claim or f_.def_body) else differs).append(s_.id)
+                if differs is None:
+                    verdicts.append((bool(formal_affected),
+                                     f"« {alt.text} » : effet sur la formalisation non déterminable automatiquement"))
+                elif not differs:
+                    verdicts.append((False, f"« {alt.text} » : même énoncé Lean (sens inchangé)"))
+                else:
+                    blocking = alt.score >= LOW_PROBABILITY or u.context_dependent
+                    verdicts.append((blocking, f"« {alt.text} » : changerait l'énoncé de l'étape {', '.join(differs)}"
+                                     + ("" if blocking else f" mais lecture peu probable ({alt.score:.2f})")))
         blocking = any(b for b, _ in verdicts)
         u.blocking = blocking
         u.resolution = " ; ".join(r for _, r in verdicts)
@@ -351,12 +413,12 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
 
 
 def run_fidelity(tr: Transcription, st: ProofStructure, fm: Formalization, lean: LeanReport,
-                 lean_evals: dict) -> list[FidelityCheck]:
+                 lean_evals: dict, ref=None) -> list[FidelityCheck]:
     checks: list[FidelityCheck] = []
     checks += check_anchoring(tr, st)
     checks += check_structure(st, fm)
     checks += check_coverage(tr, st)
     checks += check_fingerprints(fm, st, tr, lean_evals)
     checks += check_predicates(fm, st)
-    checks += analyse_uncertainties(tr, st, fm, lean_evals)
+    checks += analyse_uncertainties(tr, st, fm, lean_evals, ref)
     return checks
