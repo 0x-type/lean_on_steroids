@@ -182,6 +182,70 @@ def normalize_boxes(lines: list[WireLine]) -> tuple[list[WireLine], float]:
     return out, conform / max(1, len(lines))
 
 
+def ink_map(im: Image.Image, side: int = 500) -> tuple[list[list[int]], int, int]:
+    """Carte d'encre réduite (somme cumulée 2D) : pixel plus sombre que son voisinage."""
+    from PIL import ImageFilter
+
+    g = ImageOps.autocontrast(im.convert("L"), cutoff=1)
+    g.thumbnail((side, side))
+    bg = g.filter(ImageFilter.BoxBlur(max(4, side // 60)))
+    w, h = g.size
+    gp, bp = g.load(), bg.load()
+    cum = [[0] * (w + 1) for _ in range(h + 1)]
+    for y in range(h):
+        row, prev, acc = cum[y + 1], cum[y], 0
+        for x in range(w):
+            acc += 1 if gp[x, y] < bp[x, y] - 18 else 0
+            row[x + 1] = prev[x + 1] + acc
+    return cum, w, h
+
+
+def _ink_density(cum, w: int, h: int, b) -> float | None:
+    """Part de pixels d'encre dans une boîte normalisée 0–1000 ; None si la boîte sort de la page."""
+    x0, y0, x1, y1 = b
+    if x1 <= x0 or y1 <= y0 or x0 < -20 or y0 < -20 or x1 > 1020 or y1 > 1020:
+        return None
+    X0, X1 = max(0, int(x0 * w / 1000)), min(w, max(int(x0 * w / 1000) + 1, int(x1 * w / 1000)))
+    Y0, Y1 = max(0, int(y0 * h / 1000)), min(h, max(int(y0 * h / 1000) + 1, int(y1 * h / 1000)))
+    area = (X1 - X0) * (Y1 - Y0)
+    if area <= 0:
+        return None
+    return (cum[Y1][X1] - cum[Y0][X1] - cum[Y1][X0] + cum[Y0][X0]) / area
+
+
+def calibrate_boxes(lines: list[WireLine], im: Image.Image, sent: tuple[int, int],
+                    ink=None) -> tuple[list[WireLine], str]:
+    """Choisit, pour la réponse d'un moteur, l'échelle de ses boîtes d'après l'encre de la page.
+
+    La consigne demande des coordonnées 0–1000, mais un modèle peut renvoyer des pixels de l'image
+    reçue (`sent`) ou des fractions 0–1. Une petite image (photo compressée par une messagerie) rend
+    les pixels indiscernables du 0–1000 par les seules valeurs : on garde l'échelle dont les boîtes
+    tombent le mieux sur l'écriture. Sans gain net, la consigne (0–1000) est conservée."""
+    boxes = [ln.bbox for ln in lines if len(ln.bbox) == 4]
+    if len(boxes) < 3:
+        return lines, "0-1000"
+    cum, w, h = ink or ink_map(im)
+    sw, sh = sent
+    cands = {"0-1000": (1.0, 1.0), f"pixels {sw}x{sh}": (1000 / sw, 1000 / sh)}
+    if max(max(b) for b in boxes) <= 1.5:
+        cands["0-1"] = (1000.0, 1000.0)
+
+    def score(sx, sy):
+        ds = [_ink_density(cum, w, h, (b[0] * sx, b[1] * sy, b[2] * sx, b[3] * sy)) for b in boxes]
+        inside = [d for d in ds if d is not None]
+        return (sum(inside) / len(ds)) if inside else 0.0
+
+    scores = {k: score(*v) for k, v in cands.items()}
+    best = max(scores, key=scores.get)
+    if best == "0-1000" or scores[best] < 1.15 * scores["0-1000"]:
+        return lines, "0-1000"
+    sx, sy = cands[best]
+    log.info("boîtes recalibrées (%s) : encre %.3f contre %.3f", best, scores[best], scores["0-1000"])
+    return [ln.model_copy(update={"bbox": [round(ln.bbox[0] * sx), round(ln.bbox[1] * sy), round(ln.bbox[2] * sx),
+                                           round(ln.bbox[3] * sy)]}) if len(ln.bbox) == 4 else ln
+            for ln in lines], best
+
+
 # -- Consensus -----------------------------------------------------------------------------
 
 
@@ -259,9 +323,46 @@ def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engi
     return text, uncs, uid
 
 
+_LAYOUT = re.compile(r"\\(?:begin|end)\{[a-z*]+\}|\\text|\\sout|\\\\|[${}&\s]")
+
+
+def _skeleton(text: str) -> str:
+    """Texte sans mise en page LaTeX (systèmes, cellules, $) : pour reconnaître un même contenu."""
+    return _LAYOUT.sub("", normalize(text)).lower()
+
+
+def _is_fragment_of(text: str, box, lines: list[TranscribedLine]) -> bool:
+    """Vrai si `text` est déjà contenu dans une ligne retenue à la même hauteur.
+
+    Un moteur peut couper en deux une ligne qu'un autre lit d'un seul tenant (deux systèmes
+    côte à côte, une note dans la marge) ; sans ce test, le morceau réapparaîtrait en double."""
+    t = _skeleton(text)
+    if len(t) < 3:
+        return False
+    for ln in lines:
+        # Même hauteur ou ligne voisine : les boîtes d'un système sur deux rangées sont souvent
+        # celles de sa première rangée seulement.
+        gap = max(box[1], ln.bbox[1]) - min(box[3], ln.bbox[3])
+        if gap > max(box[3] - box[1], ln.bbox[3] - ln.bbox[1]):
+            continue
+        if fuzz.partial_ratio(t, _skeleton(ln.text)) >= 85:
+            return True
+    return False
+
+
 def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: int,
-              uid_start: int = 1) -> tuple[list[TranscribedLine], list[Uncertainty]]:
+              uid_start: int = 1, im: Image.Image | None = None,
+              notes: dict[str, str] | None = None) -> tuple[list[TranscribedLine], list[Uncertainty]]:
     fixed = {e: normalize_boxes(ls) for e, ls in runs.items()}
+    if im is not None:
+        sent = im.copy()
+        sent.thumbnail((LLM_MAX_SIDE, LLM_MAX_SIDE))
+        ink = ink_map(im)
+        for e, (ls, conf) in list(fixed.items()):
+            ls2, scale = calibrate_boxes(ls, im, sent.size, ink)
+            fixed[e] = (ls2, conf)
+            if scale != "0-1000" and notes is not None:
+                notes[e] = f"boîtes recalibrées ({scale})"
     runs = {e: v[0] for e, v in fixed.items()}
     # Moteur d'ancrage (positions des lignes) : celui dont les boîtes étaient les plus conformes ;
     # à égalité, l'ordre donné par l'utilisateur.
@@ -309,6 +410,8 @@ def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: in
         for j, b in enumerate(runs[e]):
             if j in used[e] or b.status != "normal":
                 continue
+            if _is_fragment_of(b.text, px(b.bbox), lines):
+                continue  # morceau d'une ligne que l'ancre a lue d'un seul tenant : rien de manqué
             k += 1
             lines.append(TranscribedLine(id=f"p{page}.L{k:02d}", page=page, bbox=px(b.bbox), text=b.text,
                                          status=LineStatus.normal, confidence=round(b.confidence * 0.4, 3),
@@ -402,7 +505,7 @@ def read_crops(engine: Engine, page_img: Image.Image, lines: list[TranscribedLin
 
 def cascade_page(page: int, im: Image.Image, runs: dict[str, list[WireLine]], strong: list[Engine],
                  cfg, seed: str, uid_start: int) -> tuple[list[TranscribedLine], list[Uncertainty], list[EngineRun]]:
-    lines, uncs = consensus(page, runs, im.width, im.height, uid_start)
+    lines, uncs = consensus(page, runs, im.width, im.height, uid_start, im=im)
     n = len([e for e, ls in runs.items() if ls])
     disputed = disputed_lines(lines, uncs, n, getattr(cfg, "cascade_min_conf", 0.75))
     audited = audit_sample(lines, disputed, getattr(cfg, "audit_rate", 0.0), seed)
@@ -551,7 +654,11 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
                                              uid_start=len(all_uncs) + 1)
             runs_meta += meta
         else:
-            lines, uncs = consensus(pno, runs, im.width, im.height, uid_start=len(all_uncs) + 1)
+            notes: dict[str, str] = {}
+            lines, uncs = consensus(pno, runs, im.width, im.height, uid_start=len(all_uncs) + 1, im=im, notes=notes)
+            for r in runs_meta:
+                if r.mode == "aveugle" and r.engine in notes:
+                    r.note = notes[r.engine]
         if cfg.reasoning_engine and not getattr(cfg, "lazy_judge", False):
             try:
                 adjudicate(make_engine(cfg.reasoning_engine, cache), ref, im, lines, uncs)
