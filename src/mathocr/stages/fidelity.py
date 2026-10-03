@@ -273,6 +273,17 @@ def _phrase_equivalent(a: str, b: str) -> bool:
 DEFINITION_CONNECTORS = {":", ":=", "=", r"\Leftrightarrow", r"\iff", r"\equiv", r":\Leftrightarrow", "⇔", "≡"}
 
 
+def _core_diff(a: str, b: str) -> tuple[str, str]:
+    """Partie qui diffère vraiment entre deux lectures (préfixe et suffixe communs retirés)."""
+    i = 0
+    while i < min(len(a), len(b)) and a[i] == b[i]:
+        i += 1
+    j = 0
+    while j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]:
+        j += 1
+    return a[i:len(a) - j].strip(), b[i:len(b) - j].strip()
+
+
 def _letters(latex: str) -> set[str]:
     """Lettres-variables d'un fragment (repli quand SymPy ne sait pas l'analyser)."""
     s = re.sub(r"\\(mathbb|mathrm|text|operatorname)\{[^}]*\}", " ", latex.replace("$", " "))
@@ -319,11 +330,16 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
         if not formal_affected:
             verdicts.append((False, "n'affecte aucune étape formalisée"))
         for alt in alts:
+            core_a, core_b = _core_diff(u.chosen, alt.text)
             if formal_affected and all(f.role == "def" for _, f in formal_affected) \
-                    and u.chosen.strip() in DEFINITION_CONNECTORS and alt.text.strip() in DEFINITION_CONNECTORS:
+                    and core_a in DEFINITION_CONNECTORS and core_b in DEFINITION_CONNECTORS:
                 verdicts.append((False, f"« {alt.text} » : même définition (notation du symbole de définition)"))
                 continue
             in_math = any(u.chosen in seg for seg in _math_segments(tr.line(u.line_id).text)) or "\\" in u.chosen
+            if not in_math and not any(u.chosen in s_.statement or u.chosen.strip(" .") in s_.statement
+                                       for s_, _ in formal_affected):
+                verdicts.append((False, f"« {alt.text} » : texte hors de l'énoncé formalisé (aucun effet sur Lean)"))
+                continue
             if not in_math:
                 if _phrase_equivalent(u.chosen, alt.text):
                     verdicts.append((False, f"« {alt.text} » : même sens mathématique"))

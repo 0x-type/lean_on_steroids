@@ -70,7 +70,14 @@ chaîne) ou nécessairement utilisées. N'ajoute pas de dépendance que la copie
 - `observations` : problèmes de rédaction ou de logique visibles (severity : info, redaction, lacune, erreur). \
 Signale un connecteur injustifié, une quantification manquante, une étape non justifiée. Ne signale pas une \
 erreur de calcul par intuition : c'est Lean qui tranchera.
-- `unmapped_lines` : lignes non rattachées (titres, ratures)."""
+- `unmapped_lines` : lignes non rattachées (titres, ratures).
+
+Format de `statement` (il est lu par un programme) : LaTeX seul, sans phrase française, avec ces formes :
+- définition : `P(n) : <formule>` (pas de domaine, pas de ∀ devant) ;
+- prédicat : `P(0)`, `P(n+1)` (sans « est vraie ») ;
+- relation : `<membre> = <membre>` (ou <, \\leq, …), un seul signe de relation par étape ;
+- conjonction : `A \\text{{ et }} B` ; implication : `A \\Rightarrow B` ; quantificateur : `\\forall n,\\ A`.
+Recopier les formules telles que lues dans la transcription, sans les simplifier ni les corriger."""
 
 FORMALIZE_SYSTEM = """Tu traduis en Lean 4 (Mathlib) les étapes d'une démonstration d'élève, UNE PAR UNE \
 ET LITTÉRALEMENT. Tu es traducteur, pas correcteur : si l'élève écrit une égalité fausse, tu écris \

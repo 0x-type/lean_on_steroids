@@ -73,6 +73,6 @@ def test_evaluate_command_end_to_end(monkeypatch, tmp_path, capsys):
                    "--ocr-fort", "strong:S", "--sortie", str(tmp_path / "ev"), "--cache", str(tmp_path / "c")])
     out = capsys.readouterr().out
     assert rc == 0
-    assert "| somme_impairs_p1 |" in out and "cascade: cheap:A + cheap:B → strong:S" in out
+    assert "| somme_impairs_p1 |" in out and "cascade (high): cheap:A + cheap:B → strong:S" in out
     scores = json.loads((tmp_path / "ev" / "scores.json").read_text())
     assert scores[0]["silent_errors"] == 0 and not scores[0]["missed_lines"]

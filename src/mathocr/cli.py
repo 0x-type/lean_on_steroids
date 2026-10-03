@@ -51,7 +51,7 @@ def _cfg(a) -> PipelineConfig:
                           lean_memory_mb=a.memoire, ocr_engines=a.ocr or [], reasoning_engine=a.raisonnement,
                           judge_engine=a.juge, tier2=not a.sans_niveau2, polish_feedback=a.reformuler,
                           cache_dir=Path(a.cache), ocr_mode=a.mode_ocr, ocr_strong=a.ocr_fort or [],
-                          audit_rate=a.audit)
+                          audit_rate=a.audit, ocr_effort=a.effort_ocr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="cascade : --ocr lisent la page, seules les lignes disputées vont à --ocr-fort")
         p.add_argument("--ocr-fort", action="append", help="moteur(s) de relecture des lignes disputées (cascade)")
         p.add_argument("--audit", type=float, default=0.0, help="part des lignes d'accord relues quand même (0-1)")
+        p.add_argument("--effort-ocr", default="high", choices=["low", "medium", "high"],
+                       help="effort de raisonnement des lecteurs (coût vs précision)")
         p.add_argument("-v", "--verbose", action="store_true")
 
     c = sub.add_parser("corriger", help="corriger une copie")
@@ -116,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "photo":
         a.lean_workspace, a.sandbox, a.delai, a.memoire, a.ocr, a.raisonnement = ".", "auto", 1, 1, [], None
         a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False
-        a.mode_ocr, a.ocr_fort, a.audit = "ensemble", [], 0.0
+        a.mode_ocr, a.ocr_fort, a.audit, a.effort_ocr = "ensemble", [], 0.0, "high"
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(levelname)s %(message)s")
     cfg = _cfg(a)
 
@@ -168,9 +170,11 @@ def _evaluate(a, cfg) -> int:
     from .stages.photo_quality import check
     from .stages.transcribe import transcribe
 
+    # Ici on mesure la lecture seule : l'arbitre (s'il est demandé) traite tous les doutes.
+    cfg.lazy_judge = False
     jeu = json.loads(a.jeu.read_text())
     base = a.jeu.parent
-    label = (f"{cfg.ocr_mode}: " + " + ".join(cfg.ocr_engines)
+    label = (f"{cfg.ocr_mode} ({cfg.ocr_effort}): " + " + ".join(cfg.ocr_engines)
              + (f" → {' + '.join(cfg.ocr_strong)}" if cfg.ocr_strong else "")
              + (f" (arbitre {cfg.reasoning_engine})" if cfg.reasoning_engine else ""))
     a.sortie.mkdir(parents=True, exist_ok=True)
@@ -185,7 +189,11 @@ def _evaluate(a, cfg) -> int:
             continue
         with ledger_scope() as led:
             set_stage("transcription")
-            hyp = transcribe(images, ref, cfg)
+            try:
+                hyp = transcribe(images, ref, cfg)
+            except Exception as ex:  # noqa: BLE001 - une configuration en échec est un résultat
+                print(f"| {c['nom']} | {label} | ÉCHEC : {ex} |")
+                continue
             cost = led.report()
         (a.sortie / f"{c['nom']}.json").write_text(hyp.model_dump_json(indent=1))
         sc = score(reference, hyp, case=c["nom"], config=label)

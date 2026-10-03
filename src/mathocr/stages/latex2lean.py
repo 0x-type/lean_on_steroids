@@ -440,6 +440,14 @@ def _split_top(s: str, seps: list[str], *, stop_at_forall: bool = False) -> tupl
     return None
 
 
+_TRAILING_DOMAIN = re.compile(
+    r"\s*,?\s*\(\s*(?:\\forall\s*)?([A-Za-z])\s*\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ)\s*\)\s*$")
+_DEF_SYMBOLS = [r"\\(?:stackrel|overset)\{\s*(?:\\text\{)?\s*d[ée]f\s*\}?\s*\}\{=\}", r"\\coloneqq", r"\\triangleq",
+                r"\\colon", r"\\equiv", r"\\iff", r"\\Leftrightarrow", r"\\Longleftrightarrow", r":\\Leftrightarrow",
+                r":\\iff", r":=", r"≜", r"≡", r"⇔", r":", r"="]
+_DEF_HEAD = re.compile(r"([A-Z])\s*\(\s*([A-Za-z])\s*\)\s*(?:" + "|".join(_DEF_SYMBOLS) + r")\s*(.*)$")
+
+
 class Translator:
     def __init__(self, var_types: dict[str, str], preds: set[str]):
         self.var_types = dict(var_types)
@@ -456,6 +464,14 @@ class Translator:
         s = _clean(latex)
         if not s:
             raise TranslationError("affirmation vide")
+        # « Pour n = 0, C » : contexte du cas traité. Sans effet si n n'apparaît pas dans C ;
+        # sinon on laisse l'agent formaliser (substitution à faire).
+        m = re.match(r"^(?:Pour|pour|Si|si|Lorsque|lorsque)\s+([A-Za-z])\s*=\s*([^,]+),\s*(.+)$", s)
+        if m:
+            inner = self.claim(m.group(3))
+            if m.group(1) in inner.free:
+                raise TranslationError(f"affirmation conditionnée par {m.group(1)} = {m.group(2)}")
+            return inner
         # ∀ x, A   |   ∀ x ∈ E, A
         m = re.match(r"^\\forall\s*([A-Za-z])\s*(?:\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ))?\s*,?\s*(.*)$", s)
         if m:
@@ -467,6 +483,17 @@ class Translator:
             if saved is None:
                 self.var_types.pop(v, None)
             return Claim(f"∀ {v} : {t}, {inner.lean}", None, inner.free - {v})
+        # « … (n ∈ ℕ) » en fin d'affirmation : équivaut à « … ∀ n ∈ ℕ ».
+        dm = _TRAILING_DOMAIN.search(s)
+        if dm:
+            s = s[: dm.start()].strip() + rf" \forall {dm.group(1)} \in {dm.group(2)}"
+        # « et » en toutes lettres sépare deux affirmations : « P(0) est vraie et P(n) ⇒ P(n+1) ∀n »
+        # = P(0) ∧ (∀n, P(n) ⇒ P(n+1)). Il se coupe avant ⇒ et avant un ∀ final.
+        parts = _split_top(s, [" et "], stop_at_forall=True)
+        if parts:
+            a, _, b = parts
+            ca, cb = self.claim(a), self.claim(b)
+            return Claim(f"{_wrap(ca.lean)} ∧ {_wrap(cb.lean)}", None, ca.free | cb.free)
         # « A ∀ n ∈ ℕ » en fin de phrase (fréquent dans les copies)
         m = re.match(r"^(.*?)\s*\\forall\s*([A-Za-z])\s*(?:\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ))?\s*$", s)
         if m and m.group(1):
@@ -479,7 +506,7 @@ class Translator:
                 ca, cb = self.claim(a), self.claim(b)
                 return Claim(f"({ca.lean}) {lean_op} ({cb.lean})" if lean_op == "↔" else f"{ca.lean} → {cb.lean}",
                              None, ca.free | cb.free)
-        parts = _split_top(s, [" et ", r"\land", r"\wedge"], stop_at_forall=True)
+        parts = _split_top(s, [r"\land", r"\wedge"], stop_at_forall=True)
         if parts:
             a, _, b = parts
             ca, cb = self.claim(a), self.claim(b)
@@ -528,7 +555,14 @@ class Translator:
 
     def definition(self, latex: str) -> tuple[str, list[Binder], str, Sides | None]:
         s = _clean(latex)
-        m = re.match(r"^([A-Z])\s*\(\s*([A-Za-z])\s*\)\s*(?::|:=|\\colon|≡)\s*(.*)$", s)
+        # « ∀ n ∈ ℕ, P(n) : … » : le quantificateur porte sur la variable de la définition.
+        s = re.sub(r"^\\forall\s*[A-Za-z]\s*(?:\\in\s*(?:\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ))?\s*,\s*", "", s)
+        # « P(n) : … (n ∈ ℕ) » : domaine de la variable indiqué en fin de définition.
+        dm = _TRAILING_DOMAIN.search(s)
+        if dm:
+            self.var_types[dm.group(1)] = TYPES[dm.group(2)]
+            s = s[: dm.start()].strip()
+        m = _DEF_HEAD.match(s)
         if not m:
             raise TranslationError("définition non reconnue (attendu « P(n) : … »)")
         name, var, body = m.group(1), m.group(2), m.group(3)
@@ -576,7 +610,7 @@ NOT_FORMALIZED = {"introduction": "introduction (pas une affirmation)", "annonce
 def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> TranslationResult:
     types = variable_types(ref, st)
     preds = {m.group(1) for s in st.steps if s.kind == "definition"
-             for m in [re.match(r"^\$?\s*([A-Z])\s*\(", _clean(s.statement))] if m}
+             for m in [_DEF_HEAD.search(_clean(s.statement))] if m}
     tr = Translator(types, preds)
     scope_vars = {sc.id: sc.variables for sc in st.scopes}
     scopes = [ScopeFormal(scope_id=sc.id, binders=[Binder(name=v, type=types.get(v, "ℕ")) for v in sc.variables])

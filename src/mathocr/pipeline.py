@@ -46,6 +46,7 @@ class PipelineConfig:
     # Mode « cascade » : ocr_engines (bon marché) lisent la page ; seules les lignes disputées
     # sont relues, zoomées, par ocr_strong. audit_rate : part des lignes d'accord relues quand même.
     ocr_mode: str = "ensemble"
+    ocr_effort: str = "high"  # effort de raisonnement des lecteurs : low | medium | high
     ocr_strong: list[str] = field(default_factory=list)
     cascade_min_conf: float = 0.75
     audit_rate: float = 0.0
@@ -54,6 +55,7 @@ class PipelineConfig:
     cache_dir: Path = Path("runs/.cache")
     memory_dir: Path | None = Path("runs/.memoire")  # None = pas de mémoire partagée
     photo_gate: bool = True  # refuser localement les photos inutilisables avant tout appel payant
+    lazy_judge: bool = True  # arbitre seulement sur les doutes qui peuvent changer le verdict
     tier2: bool = True
     polish_feedback: bool = False
 
@@ -91,12 +93,11 @@ def _run(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     lean_seconds = 0.0
-    ref_ = _load(exercise, ReferenceStatement)
+    ref = _load(exercise, ReferenceStatement)
     memory = None
     if cfg.memory_dir is not None:
         from .memory import StepMemory
-        memory = StepMemory(cfg.memory_dir, ref_.exercise_id)
-    ref = _load(exercise, ReferenceStatement)
+        memory = StepMemory(cfg.memory_dir, ref.exercise_id)
 
     # 1. Transcription
     set_stage("transcription")
@@ -117,43 +118,66 @@ def _run(
                 p.path = str(cand)
     _save(out_dir, "1_transcription.json", tr)
 
-    # 2. Structure
-    set_stage("structure")
-    st = _load(structure, ProofStructure)
-    if st is None:
-        from .stages.agents import extract_structure
-        st = extract_structure(ref, tr, cfg)
-    _save(out_dir, "2_structure.json", st)
-
-    # 3. Formalisation
-    set_stage("formalisation")
-    fm = _load(formalization, Formalization)
-    if fm is None:
-        from .stages.agents import formalize
-        fm = formalize(ref, tr, st, cfg, memory=memory)
-    _save(out_dir, "3_formalisation.json", fm)
-
-    # 4. Lean
     scfg = SandboxConfig(workspace=cfg.workspace, backend=cfg.sandbox, wall_timeout_s=cfg.lean_timeout_s,
                          memory_mb=cfg.lean_memory_mb)
-    set_stage("lean")
-    lean, evals = verify(ref, st, fm, scfg, out_dir)
-    lean_seconds += lean.run.seconds if lean.run else 0.0
-    broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
-    if cfg.tier2 and cfg.reasoning_engine and not broken and any(c.status == "non_verifie" for c in lean.steps):
-        from .stages.agents import tier2_attempts
-        fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory)
-        _save(out_dir, "3b_formalisation_niveau2.json", fm)
+
+    def downstream(tr: Transcription, st_given: ProofStructure | None = None):
+        """Étapes 2 à 5 : structure, formalisation, Lean, fidélité."""
+        nonlocal lean_seconds
+        set_stage("structure")
+        st = st_given or _load(structure, ProofStructure)
+        if st is None:
+            from .stages.agents import extract_structure
+            st = extract_structure(ref, tr, cfg)
+        _save(out_dir, "2_structure.json", st)
+
+        set_stage("formalisation")
+        fm = _load(formalization, Formalization)
+        if fm is None:
+            from .stages.agents import formalize
+            fm = formalize(ref, tr, st, cfg, memory=memory)
+        _save(out_dir, "3_formalisation.json", fm)
+
+        set_stage("lean")
         lean, evals = verify(ref, st, fm, scfg, out_dir)
         lean_seconds += lean.run.seconds if lean.run else 0.0
-    _save(out_dir, "4_lean.json", lean)
+        broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
+        if cfg.tier2 and cfg.reasoning_engine and not broken and any(c.status == "non_verifie" for c in lean.steps):
+            from .stages.agents import tier2_attempts
+            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory)
+            _save(out_dir, "3b_formalisation_niveau2.json", fm)
+            lean, evals = verify(ref, st, fm, scfg, out_dir)
+            lean_seconds += lean.run.seconds if lean.run else 0.0
+        _save(out_dir, "4_lean.json", lean)
 
-    # 5. Fidélité
-    set_stage("fidélité")
-    fid = run_fidelity(tr, st, fm, lean, evals, ref)
+        set_stage("fidélité")
+        fid = run_fidelity(tr, st, fm, lean, evals, ref)
+        return st, fm, lean, evals, fid
+
+    st, fm, lean, evals, fid = downstream(tr)
+
+    # Arbitre « paresseux » : seulement pour les doutes qui peuvent changer le verdict.
+    if cfg.lazy_judge and cfg.reasoning_engine and transcription is None:
+        from .stages.transcribe import adjudicate_needed
+        set_stage("arbitrage")
+        changed = adjudicate_needed(tr, ref, cfg)
+        if changed:
+            patched, touches_statements = _patch_structure(st, changed)
+            if patched is None:
+                st, fm, lean, evals, fid = downstream(tr)  # changement de texte : nouvelle analyse
+            elif touches_statements:
+                st, fm, lean, evals, fid = downstream(tr, patched)  # retraduction + Lean, sans agent
+            else:
+                st = patched
+                _save(out_dir, "2_structure.json", st)
+                fid = run_fidelity(tr, st, fm, lean, evals, ref)
+        else:
+            fid = run_fidelity(tr, st, fm, lean, evals, ref)
+
     if cfg.judge_engine:
         from .stages.agents import backtranslate
-        fid += backtranslate(tr, st, fm, cfg)
+        set_stage("fidélité")
+        fid += backtranslate(tr, st, fm, cfg, fid=fid)
     (out_dir / "5_fidelite.json").write_text(json.dumps([c.model_dump() for c in fid], ensure_ascii=False, indent=1),
                                              encoding="utf-8")
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)
@@ -176,6 +200,36 @@ def _run(
     from .report.html import render_html
     (out_dir / "rapport.html").write_text(render_html(result, out_dir), encoding="utf-8")
     return result
+
+
+def _patch_structure(st: ProofStructure, changed) -> tuple[ProofStructure | None, bool]:
+    """Reporte dans la structure les lectures changées par l'arbitre, sans rappeler l'agent.
+
+    Retourne (structure corrigée, vrai si un énoncé d'étape a changé), ou (None, …) si un changement
+    porte sur du texte en toutes lettres dans un énoncé : l'analyse logique est alors refaite."""
+    import re
+
+    from .stages.transcribe import _is_letter, _rename_letter
+
+    st = st.model_copy(deep=True)
+    touched = False
+    for u, old in changed:
+        new = u.chosen
+        for step in st.steps:
+            refs = [r for r in step.source if r.line_id == u.line_id]
+            if not refs:
+                continue
+            for r in refs:
+                r.excerpt = (_rename_letter(r.excerpt, old, new) if _is_letter(old) and _is_letter(new)
+                             else r.excerpt.replace(old, new, 1))
+            if old in step.statement:
+                wordy = re.search(r"[A-Za-zÀ-ÿ]{3,}", re.sub(r"\\[A-Za-z]+", "", old + " " + new))
+                if wordy:
+                    return None, True
+                step.statement = (_rename_letter(f"${step.statement}$", old, new)[1:-1]
+                                  if _is_letter(old) and _is_letter(new) else step.statement.replace(old, new, 1))
+                touched = True
+    return st, touched
 
 
 def _remember(memory, st: ProofStructure, fm: Formalization, lean, fid) -> None:

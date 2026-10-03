@@ -34,3 +34,16 @@ def test_silent_flagged_and_missed_are_distinguished():
     assert [(e.expected, e.got) for e in flagged] == [("+", "-")]
     missed_tokens = len(tokens(_math(next(ln for ln in REF.lines if ln.id == 'p1.L16').text)))
     assert sc.silent_errors == 1 + missed_tokens  # l'exposant + tous les jetons de la ligne manquée
+
+
+def test_consistent_index_renaming_is_not_an_error():
+    hyp = REF.model_copy(deep=True)
+    for ln in hyp.lines:
+        if ln.id in ("p1.L02", "p1.L08"):
+            ln.text = ln.text.replace("{k=0}", "{h=0}").replace("2k", "2h")
+    sc = score(REF, hyp)
+    assert sc.math_errors == 0 and sc.renamed_indices == 2
+    # …mais un renommage partiel (indice h, terme en k) reste une erreur.
+    hyp2 = REF.model_copy(deep=True)
+    next(ln for ln in hyp2.lines if ln.id == "p1.L02").text = r"$P(n) : \sum_{h=0}^{n-1} (2k+1) = n^2$"
+    assert score(REF, hyp2).math_errors == 1

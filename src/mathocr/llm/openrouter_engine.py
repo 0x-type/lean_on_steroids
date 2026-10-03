@@ -40,7 +40,7 @@ def _extract_json(text: str) -> str:
 
 
 class OpenRouterEngine(Engine):
-    def __init__(self, model: str, max_tokens: int = 16000):
+    def __init__(self, model: str, max_tokens: int = 32000):
         import openai  # SDK compatible : OpenRouter expose l'API OpenAI
 
         key = os.environ.get("OPENROUTER_API_KEY")

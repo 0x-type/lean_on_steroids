@@ -35,6 +35,34 @@ class LineError(BaseModel):
     flagged: bool
 
 
+def _index_renaming(rm: str, rt, ht, ops) -> dict[str, str]:
+    """Renommages cohérents d'indices muets (k → h partout dans la ligne) : pas une erreur."""
+    mapping: dict[str, str] = {}
+    renamed: dict[str, int] = {}
+    for op, i1, i2, j1, j2 in ops:
+        if op == "equal":
+            continue
+        if op != "replace" or i2 - i1 != j2 - j1:
+            return {}
+        for a, b in zip(rt[i1:i2], ht[j1:j2]):
+            if not (re.fullmatch(r"[A-Za-z]", a[0]) and re.fullmatch(r"[A-Za-z]", b[0])):
+                return {}
+            if mapping.setdefault(a[0], b[0]) != b[0]:
+                return {}
+            renamed[a[0]] = renamed.get(a[0], 0) + 1
+    # renommage complet : toutes les occurrences de la lettre doivent avoir changé
+    if any(renamed[a] != sum(1 for t in rt if t[0] == a) for a in mapping):
+        return {}
+    # seuls les indices de somme/produit peuvent être renommés librement
+    bound = set(re.findall(r"\\(?:sum|prod)\s*_\{\s*([A-Za-z])\s*=", rm))
+    if not mapping or not set(mapping) <= bound:
+        return {}
+    used = {t[0] for t in rt}
+    if any(v in used and v not in mapping for v in mapping.values()):
+        return {}  # le nouveau nom entrerait en collision avec une autre variable
+    return mapping
+
+
 class OcrScore(BaseModel):
     case: str = ""
     config: str = ""
@@ -46,6 +74,7 @@ class OcrScore(BaseModel):
     silent_errors: int = 0
     flagged_errors: int = 0
     uncertainties: int = 0
+    renamed_indices: int = 0  # lignes où l'indice muet a été renommé de façon cohérente (pas une erreur)
     cost_usd: float | None = None
     errors: list[LineError] = Field(default_factory=list)
 
@@ -116,7 +145,11 @@ def score(ref: Transcription, hyp: Transcription, *, case: str = "", config: str
         spans = [u.span for u in hyp.uncertainties if u.line_id == h.id]
         low_conf = h.confidence < 0.5
         sm = difflib.SequenceMatcher(a=[t[0] for t in rt], b=[t[0] for t in ht], autojunk=False)
-        for op, i1, i2, j1, j2 in sm.get_opcodes():
+        ops = sm.get_opcodes()
+        if _index_renaming(rm, rt, ht, ops):
+            sc.renamed_indices += 1
+            continue
+        for op, i1, i2, j1, j2 in ops:
             if op == "equal":
                 continue
             n_err = max(i2 - i1, j2 - j1)

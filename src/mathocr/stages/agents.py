@@ -292,11 +292,19 @@ class WireCmps(BaseModel):
     items: list[WireCmp]
 
 
-def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg) -> list[FidelityCheck]:
+def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
+                  fid: list[FidelityCheck] | None = None) -> list[FidelityCheck]:
+    """Relecture indépendante du Lean. Elle sert à détecter un agent infidèle : les étapes traduites
+    par le code ET confirmées par l'empreinte numérique ou le prédicat n'en ont pas besoin."""
+    evidence = {"empreinte_numerique", "application_predicat"}
+    confirmed = {sid for c in (fid or []) if c.ok and c.kind in evidence for sid in c.step_id.split(",")}
+    skip = {f.step_id for f in fm.steps if f.origin == "code" and f.step_id in confirmed}
+    if all(f.step_id in skip for f in fm.steps if f.role in ("prop", "hyp") and f.claim):
+        return []
     eng = _engine(cfg, cfg.judge_engine)
     defs = "\n".join(f"{f.def_name} " + " ".join(f"({b.name} : {b.type})" for b in f.def_binders)
                      + f" := {f.def_body}" for f in fm.steps if f.role == "def") or "(aucune)"
-    todo = [f for f in fm.steps if f.role in ("prop", "hyp") and f.claim]
+    todo = [f for f in fm.steps if f.role in ("prop", "hyp") and f.claim and f.step_id not in skip]
     claims = "\n".join(f"- {f.step_id} : {f.claim}" for f in todo)
     back = eng.structured(prompts.BACKTRANSLATE_SYSTEM, prompts.BACKTRANSLATE_TASK.format(defs=defs, claims=claims),
                           [], WireBacks)

@@ -114,7 +114,10 @@ def to_part(im: Image.Image, label: str, max_side: int = LLM_MAX_SIDE) -> ImageP
 
 
 def crop_line(im: Image.Image, bbox: tuple[int, int, int, int], margin: float = 0.35) -> Image.Image:
-    x0, y0, x1, y1 = bbox
+    x0, x1 = sorted((bbox[0], bbox[2]))
+    y0, y1 = sorted((bbox[1], bbox[3]))
+    if x1 - x0 < 4 or y1 - y0 < 4:
+        return im
     h = y1 - y0
     return im.crop((max(0, x0 - int(h * margin)), max(0, y0 - int(h * margin)),
                     min(im.width, x1 + int(h * margin)), min(im.height, y1 + int(h * margin))))
@@ -124,7 +127,7 @@ def crop_line(im: Image.Image, bbox: tuple[int, int, int, int], margin: float = 
 
 _NORM = [(r"\left", ""), (r"\right", ""), (r"\,", ""), (r"\;", ""), (r"\!", ""), (r"\displaystyle", ""),
          (r"\mathbb{N}", "ℕ"), (r"\N", "ℕ"), (r"\mathbb N", "ℕ"), (r"\cdot", "*"), (r"\times", "*"),
-         (r"\leqslant", r"\leq"), (r"\geqslant", r"\geq"), (r"\le ", r"\leq "), (r"\ge ", r"\geq ")]
+         (r"\qquad", " "), (r"\quad", " "), (r"\leqslant", r"\leq"), (r"\geqslant", r"\geq"), (r"\le ", r"\leq "), (r"\ge ", r"\geq ")]
 _TOKEN = re.compile(r"\\[A-Za-z]+|\\.|[A-Za-zÀ-ÿ]+|\d|\S")
 
 
@@ -145,6 +148,38 @@ def _y_iou(a, b) -> float:
     inter = max(0, min(a[3], b[3]) - max(a[1], b[1]))
     union = max(a[3], b[3]) - min(a[1], b[1])
     return inter / union if union > 0 else 0.0
+
+
+# -- Coordonnées des boîtes -------------------------------------------------------------------
+
+def _box_ok(x0, y0, x1, y1) -> bool:
+    return x0 < x1 and y0 < y1 and (x1 - x0) >= 0.5 * (y1 - y0)
+
+
+def normalize_boxes(lines: list[WireLine]) -> tuple[list[WireLine], float]:
+    """Ramène chaque boîte à [x0, y0, x1, y1] ; retourne aussi la part de boîtes conformes d'origine.
+
+    Les consignes demandent [x0, y0, x1, y1], mais certains modèles renvoient leur convention native
+    ([y0, x0, y1, x1]) ou mélangent les conventions d'une boîte à l'autre : on répare boîte par boîte
+    (une ligne d'écriture est plus large que haute), sinon on trie les coordonnées."""
+    out, conform = [], 0
+    for ln in lines:
+        b = ln.bbox
+        if len(b) != 4:
+            out.append(ln)
+            continue
+        a, c, d, e = b
+        if _box_ok(a, c, d, e):
+            conform += 1
+            fixed = [a, c, d, e]
+        elif _box_ok(c, a, d, e):  # [y0, x0, x1, y1]
+            fixed = [c, a, d, e]
+        elif _box_ok(c, a, e, d):  # [y0, x0, y1, x1]
+            fixed = [c, a, e, d]
+        else:
+            fixed = [min(a, d), min(c, e), max(a, d), max(c, e)]
+        out.append(ln.model_copy(update={"bbox": fixed}))
+    return out, conform / max(1, len(lines))
 
 
 # -- Consensus -----------------------------------------------------------------------------
@@ -226,7 +261,12 @@ def line_uncertainties(lid: str, anchor: str, group: dict[str, WireLine], n_engi
 
 def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: int,
               uid_start: int = 1) -> tuple[list[TranscribedLine], list[Uncertainty]]:
-    engines = [e for e, ls in runs.items() if ls]
+    fixed = {e: normalize_boxes(ls) for e, ls in runs.items()}
+    runs = {e: v[0] for e, v in fixed.items()}
+    # Moteur d'ancrage (positions des lignes) : celui dont les boîtes étaient les plus conformes ;
+    # à égalité, l'ordre donné par l'utilisateur.
+    order = list(runs)
+    engines = sorted([e for e, ls in runs.items() if ls], key=lambda e: (-round(fixed[e][1], 2), order.index(e)))
     if not engines:
         return [], []
     anchor = engines[0]
@@ -425,6 +465,43 @@ def _rename_letter(text: str, old: str, new: str) -> str:
 # -- Point d'entrée ----------------------------------------------------------------------------
 
 
+# Résolutions de l'analyse de sensibilité pour lesquelles l'arbitre ne peut rien changer au verdict.
+NO_EFFECT = ("mal formée", "même sens", "même valeur", "même énoncé", "même définition", "hors de l'énoncé",
+             "n'affecte aucune étape")
+
+
+def needs_judge(u: Uncertainty) -> bool:
+    """Un doute mérite l'arbitre si au moins une lecture alternative pourrait changer une étape."""
+    if u.blocking:
+        return True
+    parts = [p.strip() for p in (u.resolution or "").split(" ; ") if p.strip()]
+    return any(not any(k in p for k in NO_EFFECT) for p in parts)
+
+
+def adjudicate_needed(tr: Transcription, ref: ReferenceStatement, cfg) -> list[tuple[Uncertainty, str]]:
+    """Arbitre les seuls doutes utiles ; retourne les lectures changées [(doute, ancienne lecture)]."""
+    todo = [u for u in tr.uncertainties if needs_judge(u)]
+    if not todo:
+        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=True,
+                                    note="aucun doute ne peut changer le verdict : arbitre non appelé"))
+        return []
+    before = {u.id: u.chosen for u in todo}
+    cache = Path(getattr(cfg, "cache_dir", "runs/.cache"))
+    try:
+        eng = make_engine(cfg.reasoning_engine, cache)
+        for pg in tr.pages:
+            _, im = load_page(Path(pg.path), pg.page)
+            lines = [ln for ln in tr.lines if ln.page == pg.page]
+            ids = {ln.id for ln in lines}
+            adjudicate(eng, ref, im, lines, [u for u in todo if u.line_id in ids])
+        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model=eng.model, mode="arbitrage", ok=True,
+                                    note=f"{len(todo)} doute(s) arbitré(s) sur {len(tr.uncertainties)}"))
+    except Exception as ex:  # noqa: BLE001
+        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=False, error=str(ex)))
+        return []
+    return [(u, before[u.id]) for u in todo if u.chosen != before[u.id]]
+
+
 def meta_page_seed(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -454,7 +531,8 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
                                                text=b["text"], confidence=b["confidence"]) for b in raw]
                 else:
                     eng = make_engine(spec, cache)
-                    runs[eng.name] = eng.structured(prompts.OCR_SYSTEM, prompts.OCR_TASK, [part], WirePage).lines
+                    runs[eng.name] = eng.structured(prompts.OCR_SYSTEM, prompts.OCR_TASK, [part], WirePage,
+                                                    effort=getattr(cfg, "ocr_effort", "high")).lines
                 runs_meta.append(EngineRun(engine=eng.name, model=eng.model, mode="aveugle", ok=True,
                                            seconds=round(time.monotonic() - t0, 1)))
             except Exception as ex:  # noqa: BLE001 - un moteur défaillant ne doit pas arrêter les autres
@@ -474,7 +552,7 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
             runs_meta += meta
         else:
             lines, uncs = consensus(pno, runs, im.width, im.height, uid_start=len(all_uncs) + 1)
-        if cfg.reasoning_engine:
+        if cfg.reasoning_engine and not getattr(cfg, "lazy_judge", False):
             try:
                 adjudicate(make_engine(cfg.reasoning_engine, cache), ref, im, lines, uncs)
                 runs_meta.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=True))

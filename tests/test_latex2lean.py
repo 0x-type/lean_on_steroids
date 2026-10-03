@@ -65,3 +65,32 @@ def test_incoherent_reading_is_refused_not_quantified():
     r = translate_structure(ref, ProofStructure(**st))
     assert set(r.incoherent) == {"S01", "S08"} and not r.failed
     assert "variable k non définie" in r.incoherent["S08"]
+
+
+@pytest.mark.parametrize("latex,lean", [
+    # formulations réelles produites par Claude Opus 5.5 lors du premier essai
+    (r"P(0) \text{ est vraie et } P(n) \Rightarrow P(n+1)\ \forall n \in \mathbb{N}", "P 0 ∧ (∀ n : ℕ, P n → P (n + 1))"),
+    (r"\text{Pour } n=0,\ \sum_{k=0}^{-1}(2k+1) \text{ est vide}", "(∑ k ∈ Finset.range 0, (2 * k + 1) : ℕ) = 0"),
+    (r"P(n) \text{ vraie}", "P n"),
+])
+def test_real_world_phrasings(latex, lean):
+    assert T().claim(latex).lean == lean
+
+
+def test_forall_prefixed_definition():
+    name, binders, body, _ = T().definition(r"\forall n \in \mathbb{N},\ P(n) : \sum_{k=0}^{n-1} (2k+1) = n^2")
+    assert name == "P" and binders[0].name == "n" and body == "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2"
+
+
+@pytest.mark.parametrize("stmt", [
+    # quatre notations réellement produites par Claude Opus 5.5 pour la même définition
+    r"P(n) : \sum_{k=0}^{n-1} (2k+1) = n^2",
+    r"\forall n \in \mathbb{N},\ P(n) : \sum_{k=0}^{n-1} (2k+1) = n^2",
+    r"P(n) : \sum_{k=0}^{n-1} (2k+1) = n^2 \quad (n \in \mathbb{N})",
+    r"P(n) \triangleq \sum_{k=0}^{n-1}(2k+1)=n^2",
+    r"P(n) \stackrel{\text{def}}{=} \sum_{k=0}^{n-1}(2k+1)=n^2",
+    r"P(n) \Leftrightarrow \sum_{k=0}^{n-1}(2k+1)=n^2",
+])
+def test_definition_notations(stmt):
+    name, _, body, _ = T().definition(stmt)
+    assert name == "P" and body == "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2"

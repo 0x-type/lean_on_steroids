@@ -118,10 +118,16 @@ def decide(
     if lean.run is not None and lean.assembly_ok and not lean.axioms_ok:
         blocking.append("Axiomes non autorisés dans la démonstration assemblée.")
 
+    lean_ok = {c.step_id for c in lean.steps if c.status in ("verifie_elementaire", "hypothese", "definition",
+                                                           "non_formalise")}
     for o in st.observations:
         tag = ", ".join(o.step_ids)
-        if o.severity in ("lacune", "erreur"):
+        if o.severity in ("lacune", "erreur") and not (o.step_ids and set(o.step_ids) <= lean_ok):
             blocking.append(f"Observation ({tag}, non certifiée par Lean) : {o.text}")
+        elif o.severity in ("lacune", "erreur"):
+            # Lean a vérifié ces étapes à partir de ce que l'élève a écrit : la remarque porte sur la
+            # présentation, pas sur la validité.
+            remarks.append(f"Rédaction ({tag}, logique vérifiée par Lean) : {o.text}")
         else:
             remarks.append(f"Rédaction ({tag}) : {o.text}")
     for c in lean.steps:

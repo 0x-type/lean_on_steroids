@@ -48,3 +48,14 @@ def test_letter_adjudication_renames_whole_line():
     from mathocr.stages.transcribe import _rename_letter
     assert _rename_letter(r"c-à-d $\sum_{k=0}^{n-1} (2k+1) = n^2$", "k", "h") == r"c-à-d $\sum_{h=0}^{n-1} (2h+1) = n^2$"
     assert _rename_letter(r"$\ker k$ et k", "k", "h") == r"$\ker h$ et k"
+
+
+def test_mixed_box_conventions_are_repaired_per_box():
+    from mathocr.stages.transcribe import normalize_boxes
+    # Réponse réelle de Gemini : boîte 1 en [x0,y0,x1,y1], boîte 2 en [y0,x0,x1,y1]
+    lines = [WireLine(bbox=[168, 142, 206, 163], text="Ex.", confidence=0.9),
+             WireLine(bbox=[203, 298, 608, 245], text="$P(n)$", confidence=0.9)]
+    fixed, conform = normalize_boxes(lines)
+    assert fixed[0].bbox == [168, 142, 206, 163]
+    assert fixed[1].bbox == [298, 203, 608, 245]
+    assert conform == 0.5
