@@ -1,0 +1,13 @@
+{
+ "exercise_id": "mw10_somme_k",
+ "statement_latex": "Montrez par récurrence simple que $\\displaystyle\\forall n\\in\\mathbb{N}, \\, \\sum_{k=0}^{n} k = \\frac{n(n+1)}{2}.$",
+ "notes_latex": "Source : Math Woods (https://mathwoods.org/problems/mon-premier-pas-dans-le-raisonnement-par-recurrence), licence CC BY-NC-SA 4.0.",
+ "lean_imports": [
+  "MathOCRCheck.Prelude"
+ ],
+ "lean_opens": [
+  "Finset"
+ ],
+ "lean_statement": "∀ n : ℕ, ∑ k ∈ Finset.range (n + 1), (k : ℚ) = (n : ℚ) * ((n : ℚ) + 1) / 2",
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+}
