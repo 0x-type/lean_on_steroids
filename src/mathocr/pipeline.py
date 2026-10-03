@@ -47,6 +47,7 @@ class PipelineConfig:
     judge_engine: str | None = None  # rétro-traduction (idéalement un autre fournisseur)
     cache_dir: Path = Path("runs/.cache")
     memory_dir: Path | None = Path("runs/.memoire")  # None = pas de mémoire partagée
+    photo_gate: bool = True  # refuser localement les photos inutilisables avant tout appel payant
     tier2: bool = True
     polish_feedback: bool = False
 
@@ -94,6 +95,11 @@ def _run(
     # 1. Transcription
     set_stage("transcription")
     tr = _load(transcription, Transcription)
+    if tr is None and cfg.photo_gate:
+        from .stages.photo_quality import PhotoRejected, check
+        reports = [check(p) for p in images]
+        if not all(r.ok for r in reports):
+            raise PhotoRejected([r for r in reports if not r.ok])
     if tr is None:
         from .stages.transcribe import transcribe
         tr = transcribe(images, ref, cfg)

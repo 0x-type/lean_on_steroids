@@ -80,17 +80,39 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--json", action="store_true", help="afficher le résultat complet en JSON")
     common(c)
 
+    ph = sub.add_parser("photo", help="contrôler la qualité de photos (local, gratuit)")
+    ph.add_argument("images", nargs="+", type=Path)
+
     d = sub.add_parser("demo", help="exemple fourni + variantes (hors-ligne)")
     d.add_argument("--sortie", type=Path, default=ROOT / "runs" / "demo")
     common(d)
 
     a = ap.parse_args(argv)
+    if a.cmd == "photo":
+        a.lean_workspace, a.sandbox, a.delai, a.memoire, a.ocr, a.raisonnement = ".", "auto", 1, 1, [], None
+        a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(levelname)s %(message)s")
     cfg = _cfg(a)
 
+    if a.cmd == "photo":
+        from .stages.photo_quality import check
+        rc = 0
+        for p in a.images:
+            q = check(p)
+            print(f"{p.name} : {'OK' if q.ok else 'REFUSÉE'}  {q.metrics}")
+            for pb in q.problems:
+                print(f"  ✘ {pb}")
+            rc |= 0 if q.ok else 2
+        return rc
+
     if a.cmd == "corriger":
-        r = run(a.exercice, a.images, a.sortie, cfg, transcription=a.transcription, structure=a.structure,
-                formalization=a.formalisation)
+        from .stages.photo_quality import PhotoRejected
+        try:
+            r = run(a.exercice, a.images, a.sortie, cfg, transcription=a.transcription, structure=a.structure,
+                    formalization=a.formalisation)
+        except PhotoRejected as ex:
+            print(ex)
+            return 2
         print(r.model_dump_json(indent=1) if a.json else _summary(r, a.sortie))
         return 0
 
