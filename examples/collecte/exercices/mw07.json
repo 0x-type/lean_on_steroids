@@ -1,0 +1,17 @@
+{
+ "exercise_id": "mw07_convergence_xn",
+ "statement_latex": "Considérons la suite de fonctions $(f_{n})_{n}$ définie par $\\forall n \\in \\N, \\forall x \\in [0,1], f_n(x)=x^n$ Montrez que la suite $(f_n)_n$ converge simplement vers une fonction $f$ sur $[0,1]$ . Montrez que la suite $(f_n)_n$ ne converge pas uniformément vers $f$ sur $[0,1]$ . Montrez que la suite converge uniformément vers $f$ sur $[0,\\alpha]$ pour tout $\\alpha\\in]0,1[$ .",
+ "notes_latex": "Source : Math Woods (https://mathwoods.org/problems/etude-de-la-convergence-simple-puis-uniforme-de-la-suite-x-n-n), licence CC BY-NC-SA 4.0. f est la limite simple : f(x) = 0 sur [0,1[, f(1) = 1.",
+ "lean_imports": [
+  "MathOCRCheck.Prelude",
+  "Mathlib.Analysis.SpecificLimits.Basic",
+  "Mathlib.Topology.UniformSpace.UniformConvergence"
+ ],
+ "lean_opens": [
+  "Finset",
+  "Filter",
+  "Topology"
+ ],
+ "lean_statement": "(∀ x ∈ Set.Icc (0:ℝ) 1, Tendsto (fun n : ℕ => x ^ n) atTop (𝓝 (if x = 1 then 1 else 0))) ∧ ¬ TendstoUniformlyOn (fun (n : ℕ) (x : ℝ) => x ^ n) (fun x => if x = 1 then 1 else 0) atTop (Set.Icc 0 1) ∧ ∀ α : ℝ, 0 < α → α < 1 → TendstoUniformlyOn (fun (n : ℕ) (x : ℝ) => x ^ n) (fun x => if x = 1 then 1 else 0) atTop (Set.Icc 0 α)",
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+}
