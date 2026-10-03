@@ -190,7 +190,10 @@ def render_html(r: RunResult, out_dir: Path | None = None) -> str:
         fids = "".join(f"<div class='small'>{'✔' if x.ok else ('✘' if x.ok is False else '•')} "
                        f"{e(x.kind)} : {e(x.detail)}</div>" for x in fid_by.get(s.id, []))
         lean_code = f"<details><summary>Lean</summary><pre><code>{e(c.lean_snippet)}</code></pre></details>" if c and c.lean_snippet else ""
-        claim = f"<div class='small'><code>{e(f.claim or f.def_body or f.not_formalized_reason or '')}</code></div>" if f else ""
+        origin = {"code": "traduit par le code", "agent": "traduit par un agent", "mémoire": "repris de la mémoire",
+                  "": ""}.get(f.origin, f.origin) if f else ""
+        claim = (f"<div class='small'><code>{e(f.claim or f.def_body or f.not_formalized_reason or '')}</code>"
+                 f"{' <span class=muted>· ' + e(origin) + '</span>' if origin else ''}</div>") if f else ""
         msgs = "".join(f"<pre class='small'>{e(m.text[:600])}</pre>" for m in (c.messages if c and c.status != 'refute' else [])[:2])
         srows.append(
             f'<tr data-lines="{e(lines)}"><td><code>{e(s.id)}</code><div class="small muted">{e(s.kind)}'

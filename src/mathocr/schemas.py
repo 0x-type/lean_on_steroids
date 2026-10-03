@@ -235,6 +235,9 @@ class StepFormal(BaseModel):
     # (niveau 2). Elle ne peut pas changer l'énoncé de l'étape.
     agent_proof: str | None = None
     agent_refutation: str | None = None
+    # Qui a produit cette formalisation : code (traduction déterministe), agent,
+    # mémoire (étape déjà validée sur une autre copie), fixture.
+    origin: str = ""
 
 
 class ScopeFormal(BaseModel):

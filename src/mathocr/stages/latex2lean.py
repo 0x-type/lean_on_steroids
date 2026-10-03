@@ -572,14 +572,15 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
     failed: dict[str, str] = {}
     for s in st.steps:
         if s.kind in NOT_FORMALIZED:
-            steps.append(StepFormal(step_id=s.id, role="none", not_formalized_reason=NOT_FORMALIZED[s.kind]))
+            steps.append(StepFormal(step_id=s.id, role="none", not_formalized_reason=NOT_FORMALIZED[s.kind],
+                                    origin="code"))
             continue
         uses = [d for d in s.depends_on if any(x.id == d and x.kind != "definition" for x in st.steps)]
         try:
             if s.kind == "definition":
                 name, binders, body, sides = tr.definition(s.statement)
                 steps.append(StepFormal(step_id=s.id, role="def", def_name=name, def_binders=binders,
-                                        def_body=body, sides=sides))
+                                        def_body=body, sides=sides, origin="code"))
                 continue
             c = tr.claim(s.statement)
             bound_here = set()
@@ -597,10 +598,10 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
                 arg_l = re.search(rf"{m.group(1)}\s*\(([^()]*)\)", _clean(s.statement))
                 pred = (m.group(1), arg_l.group(1) if arg_l else "")
             if s.kind == "hypothese":
-                steps.append(StepFormal(step_id=s.id, role="hyp", claim=lean, predicate_app=pred))
+                steps.append(StepFormal(step_id=s.id, role="hyp", claim=lean, predicate_app=pred, origin="code"))
             else:
                 steps.append(StepFormal(step_id=s.id, role="prop", claim=lean, uses=uses, sides=c.sides,
-                                        predicate_app=pred))
+                                        predicate_app=pred, origin="code"))
         except TranslationError as ex:
             failed[s.id] = str(ex)
     return TranslationResult(Formalization(scopes=scopes, steps=steps,

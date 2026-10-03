@@ -117,12 +117,41 @@ def _sandbox(cfg) -> SandboxConfig:
                          memory_mb=cfg.lean_memory_mb)
 
 
-def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cfg) -> Formalization:
-    """Traduction déterministe d'abord ; l'agent ne reçoit que les étapes que le code refuse."""
+def memory_key(st: ProofStructure, fm: Formalization, sid: str) -> str:
+    """Clé de mémoire d'une étape : nature, formule normalisée, variables de portée, définitions."""
+    from ..memory import StepMemory
+
+    step = st.step(sid)
+    scope_types = {b.name: b.type for sc in fm.scopes for b in sc.binders}
+    chain, cur = [], step.scope
+    while cur and cur != "global":
+        sc = next((x for x in st.scopes if x.id == cur), None)
+        if sc is None:
+            break
+        chain += [(v, scope_types.get(v, "ℕ")) for v in sc.variables]
+        cur = sc.parent
+    defs = [f"{f.def_name}:{f.def_body}" for f in fm.steps if f.role == "def"]
+    return StepMemory.step_key(step.kind, step.statement, chain, defs)
+
+
+def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cfg,
+              memory=None) -> Formalization:
+    """Code d'abord, puis mémoire partagée, puis agent pour ce qui reste."""
     from .latex2lean import translate_structure
 
     det = translate_structure(ref, st)
     fm = det.formalization
+    if det.failed and memory is not None:
+        for sid in list(det.failed):
+            hit = memory.get_step(memory_key(st, fm, sid))
+            if hit is not None:
+                hit.step_id = sid
+                hit.uses = [d for d in st.step(sid).depends_on
+                            if any(x.id == d and x.kind != "definition" for x in st.steps)]
+                fm.steps.append(hit)
+                del det.failed[sid]
+        order = [s.id for s in st.steps]
+        fm.steps.sort(key=lambda f: order.index(f.step_id) if f.step_id in order else len(order))
     if not det.failed:
         return fm
     if not cfg.reasoning_engine:
@@ -138,6 +167,7 @@ def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cf
     by_id = {f.step_id: f for f in fm.steps}
     for f in llm.steps:
         if f.step_id in det.failed:
+            f.origin = "agent"
             by_id[f.step_id] = f
     order = [s.id for s in st.steps]
     steps = sorted(by_id.values(), key=lambda f: order.index(f.step_id) if f.step_id in order else len(order))
@@ -212,8 +242,9 @@ class WireTier2(BaseModel):
 
 
 def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lean: LeanReport,
-                   cfg) -> Formalization:
-    eng = _engine(cfg)
+                   cfg, memory=None) -> Formalization:
+    from ..memory import StepMemory
+
     gen = LeanGenerator(ref, st, fm)
     defs = "\n".join(f"def {f.def_name} " + " ".join(f"({b.name} : {b.type})" for b in f.def_binders)
                      + f" : Prop := {f.def_body}" for f in fm.steps if f.role == "def")
@@ -223,6 +254,11 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
             continue
         f = fm.of(c.step_id)
         binders = " ".join(f"({n} : {t})" for n, t in gen._step_binders(c.step_id))
+        hit = memory.get_tier2(StepMemory.tier2_key(binders, f.claim or "")) if memory is not None else None
+        if hit is not None:
+            f.agent_proof, f.agent_refutation = hit.get("proof"), hit.get("refutation")
+            continue
+        eng = _engine(cfg)
         out = eng.structured(prompts.TIER2_SYSTEM,
                              prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
                                                        binders=binders, claim=f.claim, defs=defs or "(aucune)"),

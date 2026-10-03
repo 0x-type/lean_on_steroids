@@ -46,6 +46,7 @@ class PipelineConfig:
     reasoning_engine: str | None = None  # structure, formalisation, niveau 2, arbitrage
     judge_engine: str | None = None  # rétro-traduction (idéalement un autre fournisseur)
     cache_dir: Path = Path("runs/.cache")
+    memory_dir: Path | None = Path("runs/.memoire")  # None = pas de mémoire partagée
     tier2: bool = True
     polish_feedback: bool = False
 
@@ -83,6 +84,11 @@ def _run(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     lean_seconds = 0.0
+    ref_ = _load(exercise, ReferenceStatement)
+    memory = None
+    if cfg.memory_dir is not None:
+        from .memory import StepMemory
+        memory = StepMemory(cfg.memory_dir, ref_.exercise_id)
     ref = _load(exercise, ReferenceStatement)
 
     # 1. Transcription
@@ -112,7 +118,7 @@ def _run(
     fm = _load(formalization, Formalization)
     if fm is None:
         from .stages.agents import formalize
-        fm = formalize(ref, tr, st, cfg)
+        fm = formalize(ref, tr, st, cfg, memory=memory)
     _save(out_dir, "3_formalisation.json", fm)
 
     # 4. Lean
@@ -123,7 +129,7 @@ def _run(
     lean_seconds += lean.run.seconds if lean.run else 0.0
     if cfg.tier2 and cfg.reasoning_engine and any(c.status == "non_verifie" for c in lean.steps):
         from .stages.agents import tier2_attempts
-        fm = tier2_attempts(ref, st, fm, lean, cfg)
+        fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory)
         _save(out_dir, "3b_formalisation_niveau2.json", fm)
         lean, evals = verify(ref, st, fm, scfg, out_dir)
         lean_seconds += lean.run.seconds if lean.run else 0.0
@@ -140,6 +146,9 @@ def _run(
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)
 
     # 6. Verdict et retour
+    if memory is not None:
+        _remember(memory, st, fm, lean, fid)
+
     set_stage("retour")
     vr = decide(ref, tr, st, lean, fid, fm)
     fb = build_feedback(tr, st, lean, vr)
@@ -154,3 +163,30 @@ def _run(
     from .report.html import render_html
     (out_dir / "rapport.html").write_text(render_html(result, out_dir), encoding="utf-8")
     return result
+
+
+def _remember(memory, st: ProofStructure, fm: Formalization, lean, fid) -> None:
+    """N'enregistre que ce qui a été vérifié : traductions d'agent fidèles, preuves de niveau 2 compilées."""
+    from .memory import StepMemory
+    from .stages.agents import memory_key
+
+    evidence = {"empreinte_numerique", "application_predicat", "retrotraduction"}
+    bad = {sid for c in fid if c.ok is False for sid in c.step_id.split(",")}
+    good = {sid for c in fid if c.ok and c.kind in evidence for sid in c.step_id.split(",")}
+    status = {c.step_id: c.status for c in lean.steps}
+    for f in fm.steps:
+        if f.origin == "agent" and f.step_id in good and f.step_id not in bad \
+                and status.get(f.step_id) not in ("erreur_formalisation", None):
+            memory.put_step(memory_key(st, fm, f.step_id), f, st.step(f.step_id).statement)
+        if (f.agent_proof and status.get(f.step_id) == "verifie_agent") or \
+                (f.agent_refutation and status.get(f.step_id) == "refute"):
+            binders = " ".join(f"({n} : {t})" for n, t in _binders(st, fm, f.step_id))
+            memory.put_tier2(StepMemory.tier2_key(binders, f.claim or ""), f.agent_proof, f.agent_refutation)
+
+
+def _binders(st, fm, sid):
+    from .lean.leangen import LeanGenerator
+    from .schemas import ReferenceStatement as _R
+
+    dummy = _R(exercise_id="_", statement_latex="", lean_statement="True")
+    return LeanGenerator(dummy, st, fm)._step_binders(sid)
