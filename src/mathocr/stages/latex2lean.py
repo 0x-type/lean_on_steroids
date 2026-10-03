@@ -443,7 +443,7 @@ def _split_top(s: str, seps: list[str], *, stop_at_forall: bool = False) -> tupl
 _TRAILING_DOMAIN = re.compile(
     r"\s*,?\s*\(\s*(?:\\forall\s*)?([A-Za-z])\s*\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ)\s*\)\s*$")
 _DEF_SYMBOLS = [r"\\(?:stackrel|overset)\{\s*(?:\\text\{)?\s*d[ée]f\s*\}?\s*\}\{=\}", r"\\coloneqq", r"\\triangleq",
-                r"\\colon", r"\\equiv", r"\\iff", r"\\Leftrightarrow", r"\\Longleftrightarrow", r":\\Leftrightarrow",
+                r"\\colon", r"\\dot\{=\}", r"\\doteq", r"\\equiv", r"\\iff", r"\\Leftrightarrow", r"\\Longleftrightarrow", r":\\Leftrightarrow",
                 r":\\iff", r":=", r"≜", r"≡", r"⇔", r":", r"="]
 _DEF_HEAD = re.compile(r"([A-Z])\s*\(\s*([A-Za-z])\s*\)\s*(?:" + "|".join(_DEF_SYMBOLS) + r")\s*(.*)$")
 

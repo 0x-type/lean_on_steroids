@@ -270,18 +270,21 @@ def _phrase_equivalent(a: str, b: str) -> bool:
 
 
 # Symboles qui introduisent une définition : « P(n) : … », « P(n) ⇔ … », « P(n) := … ».
-DEFINITION_CONNECTORS = {":", ":=", "=", r"\Leftrightarrow", r"\iff", r"\equiv", r":\Leftrightarrow", "⇔", "≡"}
+DEFINITION_CONNECTORS = {"", r"\,", r"\;", r"\dot{=}", r"\doteq", r"\triangleq", r"\coloneqq", ":", ":=", "=", r"\Leftrightarrow", r"\iff", r"\equiv", r":\Leftrightarrow", "⇔", "≡"}
 
 
 def _core_diff(a: str, b: str) -> tuple[str, str]:
-    """Partie qui diffère vraiment entre deux lectures (préfixe et suffixe communs retirés)."""
+    """Partie qui diffère vraiment entre deux lectures, au niveau des jetons LaTeX
+    (« \\dot{=} » et « \\Leftrightarrow » ne partagent pas leur barre oblique)."""
+    tok = re.compile(r"\\[A-Za-z]+(?:\{[^{}]*\})?|\\.|[^\s]")
+    ta, tb = tok.findall(a), tok.findall(b)
     i = 0
-    while i < min(len(a), len(b)) and a[i] == b[i]:
+    while i < min(len(ta), len(tb)) and ta[i] == tb[i]:
         i += 1
     j = 0
-    while j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]:
+    while j < min(len(ta), len(tb)) - i and ta[len(ta) - 1 - j] == tb[len(tb) - 1 - j]:
         j += 1
-    return a[i:len(a) - j].strip(), b[i:len(b) - j].strip()
+    return "".join(ta[i:len(ta) - j]), "".join(tb[i:len(tb) - j])
 
 
 def _letters(latex: str) -> set[str]:
@@ -438,3 +441,61 @@ def run_fidelity(tr: Transcription, st: ProofStructure, fm: Formalization, lean:
     checks += check_predicates(fm, st)
     checks += analyse_uncertainties(tr, st, fm, lean_evals, ref)
     return checks
+
+
+def confirm_alternatives_with_lean(ref, tr: Transcription, st: ProofStructure, fm: Formalization,
+                                   lean: LeanReport, fid: list[FidelityCheck], scfg, max_checks: int = 4) -> int:
+    """Un doute ne compte que s'il peut changer le VERDICT : on revérifie la copie dans Lean avec la
+    lecture alternative (gratuit, local). Si la copie reste entièrement vérifiée, le doute est levé.
+
+    Ne s'applique qu'à une copie vérifiée (on ne transforme jamais un échec en succès), et seulement
+    quand le code sait retraduire l'étape concernée. Retourne le nombre de doutes levés."""
+    from ..lean.verify import verify
+    from .latex2lean import translate_structure
+
+    def all_ok(rep: LeanReport) -> bool:
+        return (rep.run is not None and not rep.run.timed_out and rep.assembly_ok and rep.statement_match
+                and rep.axioms_ok and all(c.status in ("verifie_elementaire", "hypothese", "definition",
+                                                       "non_formalise") for c in rep.steps))
+
+    if ref is None or not all_ok(lean):
+        return 0
+    cleared = 0
+    blocking = [u for u in tr.uncertainties if u.blocking][:max_checks]
+    for u in blocking:
+        alts = [r for r in u.readings if r.text != u.chosen]
+        affected = [s for s in st.steps if u.chosen in s.statement
+                    and any(r.line_id == u.line_id for r in s.source)]
+        if not affected:
+            continue
+        ok_all = True
+        for alt in alts:
+            st2 = st.model_copy(deep=True)
+            for s_ in affected:
+                st2.step(s_.id).statement = _substitute(s_.statement, u, alt.text)
+            tr2 = translate_structure(ref, st2)
+            ids = {s_.id for s_ in affected}
+            if ids & (set(tr2.failed) | set(tr2.incoherent)):
+                ok_all = False
+                break
+            fm2 = fm.model_copy(deep=True)
+            new = {f.step_id: f for f in tr2.formalization.steps if f.step_id in ids}
+            fm2.steps = [new.get(f.step_id, f) if f.step_id in ids else f for f in fm2.steps]
+            for f in fm2.steps:  # garder les dépendances de la formalisation d'origine
+                if f.step_id in ids:
+                    f.uses = fm.of(f.step_id).uses
+            rep2, _ = verify(ref, st2, fm2, scfg)
+            if not all_ok(rep2):
+                ok_all = False
+                break
+        if ok_all and alts:
+            u.blocking = False
+            note = "revérifié dans Lean avec " + ", ".join(f"« {a.text} »" for a in alts) + \
+                   " : la copie reste entièrement vérifiée (verdict inchangé)"
+            u.resolution = f"{u.resolution} ; {note}" if u.resolution else note
+            for c in fid:
+                if c.kind == "sensibilite_lecture" and c.detail.startswith(u.id + " "):
+                    c.ok = True
+                    c.detail += f" ; {note}"
+            cleared += 1
+    return cleared

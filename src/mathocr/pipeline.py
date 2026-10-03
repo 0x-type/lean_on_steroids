@@ -174,6 +174,11 @@ def _run(
         else:
             fid = run_fidelity(tr, st, fm, lean, evals, ref)
 
+    # Doutes restants : bloquent-ils vraiment le verdict ? Revérification Lean de la lecture alternative.
+    if any(u.blocking for u in tr.uncertainties):
+        from .stages.fidelity import confirm_alternatives_with_lean
+        confirm_alternatives_with_lean(ref, tr, st, fm, lean, fid, scfg)
+
     if cfg.judge_engine:
         from .stages.agents import backtranslate
         set_stage("fidélité")

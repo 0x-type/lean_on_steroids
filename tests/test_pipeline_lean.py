@@ -116,3 +116,23 @@ def test_broken_definition_never_yields_a_conclusion(tmp_path):
     assert not any(c.status in ("refute", "verifie_agent") for c in r.lean.steps)
     assert not any(c.status == "verifie_elementaire" and "P" in (c.lean_snippet or "").split(":")[-1]
                    for c in r.lean.steps if c.step_id in ("S05", "S14"))
+
+
+@needs_lean
+@pytest.mark.lean
+def test_doubt_that_cannot_change_verdict_is_cleared_by_lean(tmp_path):
+    """Cas réel : « 0^2 = 0 » pouvait se lire « 0 = 0 » (15 %). Les deux lectures sont vraies et la copie
+    reste vérifiée : Lean le confirme, le doute ne bloque plus. « 0^2 = 1 » changerait le verdict."""
+    from mathocr.schemas import Reading, Uncertainty
+    for alt, expected in (("0 = 0", Verdict.verified), ("0^2 = 1", Verdict.review)):
+        tr = json.loads((EX / "fixtures" / "transcription.json").read_text())
+        tr["uncertainties"].append(Uncertainty(
+            id="U99", line_id="p1.L04", span="0^2 = 0", chosen="0^2 = 0",
+            readings=[Reading(text="0^2 = 0", score=0.7), Reading(text=alt, score=0.3)],
+            reason="test").model_dump())
+        p = tmp_path / f"tr_{alt}.json"
+        p.write_text(json.dumps(tr, ensure_ascii=False))
+        r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / f"out_{alt}",
+                PipelineConfig(workspace=ROOT / "lean_workspace", memory_dir=None),
+                transcription=p, structure=EX / "fixtures" / "structure.json")
+        assert r.verdict.verdict == expected, (alt, r.verdict.blocking_issues)
