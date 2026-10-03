@@ -146,8 +146,12 @@ quantifiée universellement, donc « ∀ n » explicite n'est pas une différenc
 muette (indice de somme k ou h) n'est pas une différence ; « P(n) est vraie » et la formule de P(n) \
 dépliée sont équivalentes."""
 
-COMPARE_TASK = """Pour chaque paire (copie de l'élève / relecture indépendante de la formalisation), \
-réponds `equivalent` (vrai/faux) et explique brièvement.
+COMPARE_TASK = """Pour chaque étape : `copie` = passage écrit par l'élève (il fait foi) ; `reformulation` = \
+la même étape récrite par un autre agent (aide à lire la copie : contexte d'une chaîne, notation définie plus \
+haut, mais elle peut être fausse) ; `relecture` = lecture indépendante de la formalisation Lean.
+Réponds `equivalent` = vrai seulement si la relecture affirme exactement ce que dit la COPIE. Si la \
+reformulation ou la relecture ajoute, retire ou corrige quelque chose par rapport à la copie (exposant, \
+borne, signe, terme, quantificateur), réponds faux et dis quoi. Explique brièvement.
 {pairs}"""
 
 FEEDBACK_SYSTEM = """Tu reformules un retour de correction destiné à un élève (français, bienveillant, \

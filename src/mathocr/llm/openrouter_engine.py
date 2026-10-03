@@ -18,12 +18,15 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import re
 
 from pydantic import ValidationError
 
 from .base import Engine, EngineError, ImagePart
+
+log = logging.getLogger("mathocr.openrouter")
 
 BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -75,11 +78,23 @@ class OpenRouterEngine(Engine):
         else:
             rf = {"type": "json_object"}
             provider = {}
+        max_tokens = self.max_tokens
         try:
-            return self.client.chat.completions.create(
-                model=self.model, messages=messages, response_format=rf, max_tokens=self.max_tokens,
-                extra_body={"provider": provider, "reasoning": {"effort": effort}, "usage": {"include": True}},
-            )
+            for attempt in range(3):
+                try:
+                    return self.client.chat.completions.create(
+                        model=self.model, messages=messages, response_format=rf, max_tokens=max_tokens,
+                        extra_body={"provider": provider, "reasoning": {"effort": effort}, "usage": {"include": True}},
+                    )
+                except o.APIStatusError as ex:
+                    # OpenRouter réserve le coût maximal de la requête (max_tokens) : quand le crédit restant
+                    # est faible, il refuse la réservation (402 in_flight_budget_exhausted). On redemande
+                    # avec une réserve plus petite ; une réponse tronquée est détectée plus loin.
+                    if ex.status_code == 402 and "in_flight" in str(ex.message) and attempt < 2 and max_tokens > 4000:
+                        max_tokens = max(4000, max_tokens // 3)
+                        log.warning("%s : crédit en vol insuffisant, nouvel essai avec max_tokens=%d", self.name, max_tokens)
+                        continue
+                    raise
         except o.NotFoundError as ex:  # « No endpoints found that support the requested parameters »
             if strict:
                 return None

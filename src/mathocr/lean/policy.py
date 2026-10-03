@@ -137,7 +137,8 @@ def check_fragment(fragment: str, where: str, *, multiline: bool = False) -> lis
 
 
 def check_identifier(name: str, where: str) -> list[PolicyViolation]:
-    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_']*", name) or name in FORBIDDEN_WORDS:
+    # Lettres grecques admises (α, ε, δ… courantes en mathématiques), sauf λ, mot-clé de Lean.
+    if not re.fullmatch(r"[A-Za-zα-κμ-ω][A-Za-z0-9_'α-κμ-ω₀-₉]*", name) or name in FORBIDDEN_WORDS:
         return [PolicyViolation(where=where, token=name, detail="identifiant invalide")]
     return []
 

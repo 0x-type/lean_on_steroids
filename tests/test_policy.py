@@ -39,3 +39,9 @@ def test_axioms():
     assert check_axioms({"x": ["propext", "Classical.choice", "Quot.sound"]}) == []
     assert check_axioms({"x": ["propext", "sorryAx"]})
     assert check_axioms({"x": ["Lean.ofReduceBool"]})
+
+
+def test_greek_identifiers_allowed_except_lambda():
+    from mathocr.lean.policy import check_identifier
+    assert not check_identifier("α", "t") and not check_identifier("ε₁", "t")
+    assert check_identifier("λ", "t") and check_identifier("sorry", "t")

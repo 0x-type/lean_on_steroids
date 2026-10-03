@@ -337,8 +337,17 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
     back = eng.structured(prompts.BACKTRANSLATE_SYSTEM, prompts.BACKTRANSLATE_TASK.format(defs=defs, claims=claims),
                           [], WireBacks)
     bmap = {b.step_id: b.latex for b in back.items}
-    pairs = "\n".join(f"- {f.step_id} : copie « {st.step(f.step_id).statement} » / relecture « {bmap.get(f.step_id, '?')} »"
-                      for f in todo)
+    # La référence est ce que l'élève a écrit (extraits de la transcription), pas la reformulation de
+    # l'étape par l'agent de structure : si celle-ci « répare » la copie, la comparer à la relecture
+    # ne verrait rien.
+    def excerpt(sid):
+        # Étape implicite autorisée (schéma de récurrence, chaîne d'égalités…) : rien d'écrit à comparer,
+        # sa reformulation est contrôlée par les règles de structure.
+        step = st.step(sid)
+        written = " … ".join(r.excerpt for r in step.source if r.excerpt)
+        return written if written and not step.implicit else f"(étape implicite) {step.statement}"
+    pairs = "\n".join(f"- {f.step_id} : copie « {excerpt(f.step_id)} » / reformulation « {st.step(f.step_id).statement} »"
+                      f" / relecture « {bmap.get(f.step_id, '?')} »" for f in todo)
     cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(pairs=pairs), [], WireCmps)
     out = []
     for c in cmp_.items:
