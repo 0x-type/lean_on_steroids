@@ -18,7 +18,7 @@ Il y a trois issues possibles, et seulement trois :
 pip install -e ".[dev]"
 # Lean 4.34.1 + sous-ensemble de Mathlib : voir lean_workspace/README.md
 mathocr demo          # la copie fournie + 4 variantes, résultats dans runs/demo/*/rapport.html
-pytest                # 70 tests, dont les cas de bout en bout avec Lean
+pytest                # 73 tests, dont les cas de bout en bout avec Lean
 ```
 
 Résultat attendu de `mathocr demo` :
@@ -30,6 +30,27 @@ Résultat attendu de `mathocr demo` :
 | `formalisation_infidele` — même erreur, mais le formaliseur « répare » l'élève | examen nécessaire (empreinte numérique : copie 15 ≠ Lean 16) |
 | `lecture_ambigue` — « (2n+1) » pourrait se lire « (2n-1) » | examen nécessaire (lecture alternative plausible qui change l'étape) |
 | `saut_logique` — hérédité « évidente », sans calcul | examen nécessaire (étape vraie mais ni prouvée élémentairement ni réfutée) |
+
+## Une seule clé : OpenRouter
+
+```sh
+export OPENROUTER_API_KEY=…
+mathocr modeles claude        # modèles qui lisent les images, prix, prise en charge du schéma strict
+mathocr modeles gemini
+
+# Qualité maximale : plusieurs lecteurs de familles différentes + arbitre
+mathocr corriger --exercice examples/somme_impairs/exercice.json --images copie.jpg --sortie runs/x \
+  --ocr openrouter:<claude> --ocr openrouter:<gemini> --raisonnement openrouter:<claude>
+
+# Économique : deux lecteurs bon marché, lignes disputées relues par un modèle fort
+mathocr corriger … --mode-ocr cascade --ocr openrouter:<gemini-rapide> --ocr openrouter:<autre-famille> \
+  --ocr-fort openrouter:<claude> --raisonnement openrouter:<claude>
+```
+
+Remplacer `<claude>`, `<gemini>`… par les identifiants affichés par `mathocr modeles`. Le coût
+exact de chaque appel est renvoyé par OpenRouter et figure dans le rapport. Mathpix n'est pas
+disponible via OpenRouter (clé séparée, optionnelle). Pour la lecture, choisir des modèles de
+familles différentes : deux modèles proches risquent de faire les mêmes erreurs.
 
 ## Utilisation avec les modèles
 
@@ -139,7 +160,7 @@ src/mathocr/
   report/html.py        rapport HTML (photo annotée cliquable, KaTeX)
 lean_workspace/         projet Lake (Lean 4.34.1, Mathlib v4.34.1) + tactiques de confiance
 examples/somme_impairs/ énoncé, photo, fixtures de référence, variantes (et leur générateur)
-tests/                  70 tests (politique, LaTeX, consensus, moteurs simulés, bout en bout Lean)
+tests/                  73 tests (politique, LaTeX, consensus, moteurs simulés, bout en bout Lean)
 ```
 
 ## Limites connues (prototype)

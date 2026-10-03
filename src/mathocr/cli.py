@@ -90,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--sortie", type=Path, default=ROOT / "runs" / "evaluation")
     common(ev)
 
+    mo = sub.add_parser("modeles", help="lister les modèles OpenRouter qui lisent les images (prix, schéma strict)")
+    mo.add_argument("filtre", nargs="?", default="", help="ex. claude, gemini, gpt, qwen")
+
     ph = sub.add_parser("photo", help="contrôler la qualité de photos (local, gratuit)")
     ph.add_argument("images", nargs="+", type=Path)
 
@@ -98,6 +101,18 @@ def main(argv: list[str] | None = None) -> int:
     common(d)
 
     a = ap.parse_args(argv)
+    if a.cmd == "modeles":
+        from .llm.openrouter_engine import list_vision_models
+        try:
+            models = list_vision_models()
+        except Exception as ex:  # noqa: BLE001
+            print(f"OpenRouter injoignable : {ex}")
+            return 1
+        print(f"{'modèle (à utiliser comme openrouter:<modèle>)':55s} {'entrée $/M':>10s} {'sortie $/M':>10s}  schéma strict")
+        for m in models:
+            if a.filtre.lower() in m["id"].lower():
+                print(f"{m['id']:55s} {m['in']:10.2f} {m['out']:10.2f}  {'oui' if m['structured'] else 'non (repli JSON)'}")
+        return 0
     if a.cmd == "photo":
         a.lean_workspace, a.sandbox, a.delai, a.memoire, a.ocr, a.raisonnement = ".", "auto", 1, 1, [], None
         a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False

@@ -7,6 +7,7 @@ pas codés en dur : les fournir par variable d'environnement, par exemple
     MATHOCR_PRICE_gemini-3-pro="1.25,10"      # entrée, sortie ($ / M jetons)
     MATHOCR_PRICE_mathpix="0.004"             # $ par image
 
+Avec OpenRouter, le coût exact facturé est renvoyé par l'API et utilisé tel quel.
 Un appel sans prix connu est compté, signalé, mais jamais deviné.
 """
 
@@ -58,7 +59,10 @@ class Ledger:
 
     def add(self, **kw) -> UsageEntry:
         e = UsageEntry(stage=self.stage, **kw)
-        e.cost_usd = cost_of(e)
+        if e.cached:
+            e.cost_usd = 0.0
+        elif e.cost_usd is None:  # coût non fourni par le fournisseur (OpenRouter le fournit)
+            e.cost_usd = cost_of(e)
         self.entries.append(e)
         return e
 

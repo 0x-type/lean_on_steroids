@@ -3,7 +3,8 @@
 Un moteur est désigné par une chaîne ``fournisseur:modèle`` :
 
     anthropic:claude-opus-5-5     openai:gpt-5        gemini:gemini-3-pro
-    mathpix                        replay:<répertoire>
+    openrouter:<fournisseur>/<modèle>   (une seule clé : OPENROUTER_API_KEY)
+    mathpix
 
 Toutes les réponses structurées sont validées par Pydantic. Chaque appel est
 mis en cache (clé = hachage du moteur, des consignes, du texte, des images et
@@ -16,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,7 +75,8 @@ class CachedEngine(Engine):
 
     def structured(self, system, text, images, schema, *, effort="high"):
         key = self._key(system, text, images, schema, effort)
-        path = self.cache_dir / f"{self.name.replace(':', '_')}_{schema.__name__}_{key}.json"
+        safe = re.sub(r"[^A-Za-z0-9._-]", "_", self.name)
+        path = self.cache_dir / f"{safe}_{schema.__name__}_{key}.json"
         from .pricing import record
 
         if path.exists():
@@ -109,6 +112,11 @@ def make_engine(spec: str, cache_dir: Path | None = None, *, replay_only: bool =
     elif provider in ("gemini", "google"):
         from .gemini_engine import GeminiEngine
         eng = GeminiEngine(model or os.environ.get("MATHOCR_GEMINI_MODEL", "gemini-3-pro"))
+    elif provider == "openrouter":
+        from .openrouter_engine import OpenRouterEngine
+        if not model:
+            raise EngineError("openrouter : préciser le modèle, ex. openrouter:google/<modèle> (voir « mathocr modeles »)")
+        eng = OpenRouterEngine(model)
     elif provider == "mathpix":
         from .mathpix_engine import MathpixEngine
         eng = MathpixEngine()
