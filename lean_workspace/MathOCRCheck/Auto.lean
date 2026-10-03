@@ -32,6 +32,8 @@ macro "mathocr_core" : tactic => `(tactic| first
       try (first | omega | ring1 | linarith | (norm_num; done) | (simp_all; done)));
      done; trace "mathocr:closed_by=somme_dernier_terme")
   | ((simp_all; done); trace "mathocr:closed_by=simp_all")
+  | ((push_cast at *; (try ring_nf at *); first | assumption | linarith | (simp_all; done));
+     trace "mathocr:closed_by=normalisation")
   | (nlinarith; trace "mathocr:closed_by=nlinarith"))
 
 /-- Réfutation d'un énoncé spécialisé : l'hypothèse `h` (instance du contre-exemple)

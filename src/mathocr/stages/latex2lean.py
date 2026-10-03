@@ -546,8 +546,10 @@ class Translator:
         d = max(domain_of(a, self.var_types), domain_of(b, self.var_types), key=lambda t: DOMAIN_RANK[t])
         pr = Printer(d, self.var_types)
         la, lb = pr.p(a), pr.p(b)
-        if isinstance(a, Num) and isinstance(b, Num) or (not free_vars(a) and not free_vars(b) and d == "ℕ"):
-            la = f"({la} : ℕ)" if not la.startswith("(") else la
+        if d != "ℕ" or (not free_vars(a) and not free_vars(b)):
+            # Domaine explicite : sinon Lean peut calculer dans ℕ (soustraction tronquée) quand les
+            # variables n'apparaissent qu'en exposant ou en borne (ex. 2^{n+1} - 1).
+            la = f"({la} : {d})"
         fv = free_vars(a) | free_vars(b)
         sides = Sides(relation=RELATIONS[op], lhs_lean=la, rhs_lean=lb, lhs_latex=lhs_l, rhs_latex=rhs_l,
                       value_type=d, variables=[Binder(name=v, type=self.var_types.get(v, "ℕ")) for v in sorted(fv)])

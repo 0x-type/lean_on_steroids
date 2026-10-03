@@ -11,8 +11,8 @@ def T(types=None, preds=("P",)):
     (r"\sum_{k=0}^{n-1} (2k+1) = n^2", "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2"),
     (r"\sum_{k=0}^{n} (2k+1) = (n+1)^2", "∑ k ∈ Finset.range (n + 1), (2 * k + 1) = (n + 1) ^ 2"),
     (r"\sum_{k=1}^{n} k = \frac{n(n+1)}{2}",
-     "∑ k ∈ Finset.Icc 1 n, (k : ℚ) = (((n : ℚ) * ((n : ℚ) + 1)) / (2))"),
-    (r"n^2 - 1 = (n-1)(n+1)", "(n : ℤ) ^ 2 - 1 = ((n : ℤ) - 1) * ((n : ℤ) + 1)"),
+     "(∑ k ∈ Finset.Icc 1 n, (k : ℚ) : ℚ) = (((n : ℚ) * ((n : ℚ) + 1)) / (2))"),
+    (r"n^2 - 1 = (n-1)(n+1)", "((n : ℤ) ^ 2 - 1 : ℤ) = ((n : ℤ) - 1) * ((n : ℤ) + 1)"),
     (r"P(n+1) \text{ est vraie}", "P (n + 1)"),
     (r"\sum_{k=0}^{-1} (2k+1) \text{ est nulle}", "(∑ k ∈ Finset.range 0, (2 * k + 1) : ℕ) = 0"),
     (r"P(0) \text{ et } \forall n,\ P(n) \Rightarrow P(n+1)", "P 0 ∧ (∀ n : ℕ, P n → P (n + 1))"),
@@ -46,7 +46,7 @@ def test_refusals_go_to_agent(bad):
 
 def test_real_variable_domain():
     c = T({"x": "ℝ"}).claim(r"x^2 \geq 0")
-    assert c.lean == "x ^ 2 ≥ 0" and c.sides.value_type == "ℝ"
+    assert c.lean == "(x ^ 2 : ℝ) ≥ 0" and c.sides.value_type == "ℝ"
 
 
 def test_incoherent_reading_is_refused_not_quantified():
