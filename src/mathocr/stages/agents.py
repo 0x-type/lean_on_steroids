@@ -19,7 +19,7 @@ from .. import prompts
 from ..lean.leangen import LeanGenerator
 from ..lean.sandbox import SandboxConfig
 from ..lean.verify import verify
-from ..llm.base import make_engine
+from ..llm.base import EngineError, make_engine
 from ..schemas import (
     Binder,
     Feedback,
@@ -265,7 +265,11 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
 
     def attempt(task):
         sid, f, text = task
-        out = _engine(cfg, engine).structured(prompts.TIER2_SYSTEM, text, [], WireTier2)
+        try:
+            out = _engine(cfg, engine).structured(prompts.TIER2_SYSTEM, text, [], WireTier2)
+        except EngineError as ex:  # réponse tronquée, panne : l'étape reste non vérifiée, le reste continue
+            log.warning("niveau 2 abandonné pour %s : %s", sid, ex)
+            return
         f.agent_proof = _admissible(out.proof, f"étape {sid} (preuve agent)")
         f.agent_refutation = _admissible(out.refutation, f"étape {sid} (réfutation agent)")
 

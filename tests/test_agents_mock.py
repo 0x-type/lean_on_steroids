@@ -121,3 +121,22 @@ def test_inadmissible_tier2_fragment_is_dropped_not_fatal():
     assert agents._admissible("  norm_num  ", "x") == "norm_num"
     assert agents._admissible("sorry", "x") is None
     assert agents._admissible("", "x") is None
+
+
+def test_tier2_engine_failure_leaves_step_unverified(monkeypatch):
+    from mathocr.llm.base import EngineError
+    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+                                 SourceRef, StepCheck, StepFormal)
+    ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
+    st = PS(steps=[ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])],
+            scopes=[], pattern={"kind": "aucun"})
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop", claim="1 = 1")])
+    lean = LeanReport(file="", steps=[StepCheck(step_id="s1", decl="s1", status="non_verifie")])
+
+    class E:
+        def structured(self, *a, **kw):
+            raise EngineError("réponse tronquée (max_tokens)")
+
+    monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: E())
+    out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="x"))
+    assert out.of("s1").agent_proof is None and out.of("s1").agent_refutation is None
