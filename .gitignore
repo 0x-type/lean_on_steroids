@@ -5,3 +5,4 @@ __pycache__/
 lean_workspace/.lake/
 runs/
 .env
+*.bundle
