@@ -1,22 +1,5 @@
 [
  {
-  "url": "https://mathwoods.org/problems/puissances-rationnelles-de-nombres-premiers",
-  "title": "Puissances rationnelles de nombres premiers",
-  "domain": "Arithmetic",
-  "difficulty": 22,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "On considère deux nombres premiers $p$ et $q$ distincts, ainsi que deux rationnels $r$ et $s$ . Est-il possible que $p^{r}=q^{s}\\quad ?$",
-  "groupe": "Arithmétique",
-  "solution_auteur": "darktoaster",
-  "solution": "Supposons qu’ils existent $p$ et $q$ deux nombres premiers distincts et $r$ et $s$ deux nombres rationnels tels que : $p^{r} = q^{s}$ $\\newline$ Comme, $r$ et $s$ sont rationnels, il existe $(a,b,c,d) \\in \\Z \\times \\N^{*} \\times \\Z \\times \\N^{*}$ tels que $r = \\frac a b$ et $s = \\frac c d$ $\\newline$ On a donc : $p^{\\frac a b} = q^{\\frac c d}$ On cherche à avoir des exposants entiers, pour cela : On élève l’égalité à la puissance $bd$ , on a : $p^{ad} = q^{bc}$ . $\\newline$ On cherche ensuite à avoir des exposants entiers positifs : Si $a$ et $c$ sont positifs, on a $p^{|a|d} = q^{b|c|}$ Si $a$ et $c$ sont négatifs, en passant à l’inverse dans l’égalité, on a : $p^{-ad} = q^{-bc}$ donc $p^{|a|d} = q^{|b|c}$ Si $a \\le 0$ et $c \\ge 0$ , en passant $p^{ad}$ de l’autre côté, on a $1 = q^{bc} p^{-ad} = q^{b|c|} p^{|a|d}$ Si $a \\ge 0$ et $c \\le 0$ , en passant $q^{bc}$ de l’autre côté, on a $1 = p^{ad} q^{-bc} = q^{b|c|} p^{|a|d}$ $\\newline$ Dans tous les cas, par l’unicité de la décomposition en facteurs premiers, la seule possibilité est que $a = c = 0$ , donc que $r = s = 0$ $\\newline$ Réciproquement, si $r=s=0$ alors $p^{r} = q^{s} = 1$",
-  "volontaires": [
-   "A",
-   "C"
-  ]
- },
- {
   "url": "https://mathwoods.org/problems/sur-la-multiplicativite-de-sigma",
   "title": "Sur la multiplicativité de $\\sigma$",
   "domain": "Number theory",
@@ -29,25 +12,8 @@
   "solution_auteur": "mathman",
   "solution": "Tout entier $a$ se décompose en un produit de facteurs premiers sous la forme $\\prod_{ p/a}p^{\\alpha{p}}$ La somme de ses diviseurs, $\\sigma(a)$ , vaut alors $\\prod_{p/a} \\frac{p^{\\alpha{p}+1}-1}{p-1}$ Donc si $a$ et $b$ sont premiers entre eux, $\\sigma(a)\\sigma(b)=\\sigma(ab)$",
   "volontaires": [
-   "B",
-   "D"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/sur-les-nombres-parfaits-pairs",
-  "title": "Sur les nombres parfaits pairs",
-  "domain": "Number theory",
-  "difficulty": 27,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Montrer que tout nombre parfait pair est de la forme $2^{k-1}(2^{k}-1)$ , où $k \\in \\N$ et $2^{k}-1$ est un nombre premier.",
-  "groupe": "Arithmétique",
-  "solution_auteur": "visitor",
-  "solution": "Pour $n\\geqslant 1$ , on note $\\sigma(n)=\\sum_{d\\mid n}d$ la somme des diviseurs de $n$ . Un entier $n$ est parfait s’il est égal à la somme de ses diviseurs stricts, c’est-à-dire si $\\sigma(n)=2n$ . Le point de départ est la multiplicativité de $\\sigma$ : si $a\\wedge b=1$ , alors $\\sigma(ab)=\\sigma(a)\\sigma(b)$ , les diviseurs de $ab$ s’écrivant de façon unique $d_1d_2$ avec $d_1\\mid a$ et $d_2\\mid b$ . Suivons la démonstration d’Euler. Soit $n$ parfait pair. Écrivons $n=2^{k-1}q,\\qquad k\\geqslant 2,\\quad q \\text{ impair},$ où $2^{k-1}$ est la plus grande puissance de $2$ divisant $n$ — la parité de $n$ garantit $k\\geqslant 2$ . Comme $2^{k-1}\\wedge q=1$ , la multiplicativité et la somme géométrique $\\sigma(2^{k-1})=1+2+\\cdots+2^{k-1}=2^{k}-1$ donnent $2^{k}q=2n=\\sigma(n)=\\bigl(2^{k}-1\\bigr)\\,\\sigma(q). \\qquad \\qquad \\tag{$\\ast$}$ L’entier $2^{k}-1$ est impair et divise $2^{k}q$ , donc divise $q$ : posons $q=\\bigl(2^{k}-1\\bigr)\\,s,\\qquad s\\geqslant 1$ . En reportant dans $(\\ast)$ et en simplifiant par $2^{k}-1\\neq 0$ : $\\sigma(q)=2^{k}s=q+s$ . Or $q$ et $s$ sont deux diviseurs de $q$ , distincts puisque $2^{k}-1\\geqslant 3$ . La somme de tous les diviseurs de $q$ valant exactement $q+s$ , l’entier $q$ n’a que ces deux diviseurs. Ceci force $s=1\\qquad\\text{et}\\qquad q \\text{ n'a que les diviseurs } q \\text{ et } 1,$ c’est-à-dire $q=2^{k}-1$ premier. Finalement $n=2^{k-1}\\bigl(2^{k}-1\\bigr),\\qquad 2^{k}-1 \\text{ premier}. \\qquad\\blacksquare$",
-  "volontaires": [
-   "C",
-   "E"
+   "A",
+   "B"
   ]
  },
  {
@@ -63,25 +29,8 @@
   "solution_auteur": "visitor",
   "solution": "Pour $1\\leqslant k\\leqslant p-1$ , l’application $k\\mapsto p-k$ est une involution de $\\{1,\\dots,p-1\\}$ sans point fixe, car $k=p-k$ donnerait $p=2k$ , impossible pour $p$ impair. En regroupant les termes deux à deux, $\\sum_{k=1}^{p-1}\\frac{1}{k}=\\sum_{k=1}^{\\frac{p-1}{2}}\\left(\\frac{1}{k}+\\frac{1}{p-k}\\right)=\\sum_{k=1}^{\\frac{p-1}{2}}\\frac{p}{k(p-k)}=p\\sum_{k=1}^{\\frac{p-1}{2}}\\frac{1}{k(p-k)} .$ Le dénominateur est premier à $p$ . Posons $N=\\prod_{k=1}^{\\frac{p-1}{2}}k(p-k),\\qquad M=\\sum_{k=1}^{\\frac{p-1}{2}}\\frac{N}{k(p-k)}\\in\\mathbb{N}^{*},$ de sorte que la somme précédente vaut $M/N$ . Tous les facteurs $k$ et $p-k$ intervenant dans $N$ appartiennent à $\\{1,\\dots,p-1\\}$ , donc aucun n’est divisible par $p$ ; comme $p$ est premier, $p\\nmid N$ . On a donc $\\dfrac{a}{b}=\\dfrac{pM}{N}$ , d’où par produit en croix $aN=pMb$ . Ainsi $p$ divise $aN$ , et comme $p$ est premier et $p\\nmid N$ , le lemme d’Euclide donne $p\\mid a$ $\\qquad\\blacksquare$ Noter que l’argument ne suppose pas que la fraction $a/b$ est irréductible.",
   "volontaires": [
-   "D",
-   "A"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/caracteristique-dun-anneau-quotient-2",
-  "title": "Caractéristique d’un anneau quotient (2)",
-  "domain": "Ring",
-  "difficulty": 25,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit $n\\in\\mathbb{N}^{*}$ . Déterminer la caractéristique des anneaux $A$ pour chaque anneau ci-dessous : $A=\\mathbb{Z}[X]/\\left<2X\\right>$ . $A=\\mathbb{Z}[X]/\\left<2,X\\right>$ . $A=(\\mathbb{Z}/15\\mathbb{Z})/I$ avec $I=3A$ . $A=(\\mathbb{Z}/15\\mathbb{Z})/I$ avec $I=2A$ . $A=\\mathbb{Z}[i]/\\left<1+i\\right>$ .",
-  "groupe": "Algèbre générale",
-  "solution_auteur": "2doupi",
-  "solution": "$<2X>$ ne contient pas de polynôme constant autre que 0. Donc aucune constante n’est envoyé sur 0 dans le quotient $\\Z[X]/<2X>$ . Autrement dit la caractéristique est nulle. $<2,X>$ contient l’ensemble des polynômes à coefficient constant pair. En particulier 2 mais pas 1. Donc la caractéristique est 2. $3A$ contient les classes des multiples de 3 comme 3 divise 15. $3A=\\{ \\overline{0},\\overline{3},\\overline{6},\\overline{9},\\overline{12}\\}$ . Donc la caractéristique est 3. $\\overline{2}\\times\\overline{8}=\\overline{16}=\\overline{1}$ , Donc $\\overline{1}\\in 2A$ . Donc le quotient est de caractérisique 1. $2=(1+i)(1-i)$ , Or les seuls éléments inversibles de $\\Z[i]$ sont $\\pm1,\\pm i$ et pas $1+i$ . Donc 1 n’appartient pas à $<1+i>$ . La caractéristique est 2.",
-  "volontaires": [
-   "E",
-   "B"
+   "B",
+   "C"
   ]
  },
  {
@@ -97,24 +46,7 @@
   "solution_auteur": "Ancient Tree",
   "solution": "Implication directe : Supposons que $H$ est distingué dans $G$ . Soient $h$ et $k$ dans $G$ tels que $hk\\in H$ . Notons $hk=u\\in H$ . Alors, $k=h^{-1}u$ , mais comme $H$ est distingué dans $G$ , il existe un élément $v$ de $H$ tel que $h^{-1}u=vh^{-1}$ . D’où $k=vh^{-1}$ , et donc $kh=v\\in H$ . Réciproque : Supposons que pour tous $h,k$ de $G$ , si $h,k\\in G$ tels que $hk\\in H$ , alors $kh\\in H$ . Soit $g$ dans $G$ et $h$ dans $H$ . On utilise le fait que $g^{-1}(gh)=h\\in H$ , d’où par hypothèse, on a également $ghg^{-1}$ dans $H$ , et donc $H$ est normal dans $G$ .",
   "volontaires": [
-   "A",
-   "C"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/quand-un-groupe-fini-a-exactement-deux-carres",
-  "title": "Quand un groupe fini a exactement deux carrés",
-  "domain": "General algebra",
-  "difficulty": 48,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit $G$ un groupe fini . On note $G^{2}=\\{g^{2}\\mid g\\in G\\}$ l’ensemble des carrés de $G$ . On suppose que $G^{2}$ contient exactement deux éléments, c’est-à-dire que $G$ a exactement deux carrés. Montrer que pour tout $g\\in G,$ l’ordre de $g$ divise $4$ . Démontrer que le groupe dérivé de $G$ est trivial ou cyclique d’ordre $2$ . Donner un exemple de groupe abélien fini ayant exactement deux carrés. Donner un exemple de groupe non abélien fini ayant exactement deux carrés.",
-  "groupe": "Algèbre générale",
-  "solution_auteur": "Étienne86",
-  "solution": "L' élément neutre $1$ est toujours un carré, donc l’ensemble $G^{2}$ est de la forme $\\{1, a\\}$ avec $a\\neq 1$ . Mais $a^{2}\\in G^{2}$ et $a^{2}\\neq a$ car $a\\neq 1$ , donc $a^{2}=1$ . Ainsi, si $g\\in G$ , soit $g^{2}=1$ et $g$ est d’ordre $2$ , soit $g^{2}=a$ d’où $g^{4}=a^{2}=1$ et $g$ est d’ordre $4$ . Pour $x,y\\in G$ , on a $[x, y]=xyx^{-1}y^{-1}=x^{2}x^{-1}yx^{-1}yy^{-2}=x^{2}(x^{-1}y)^{2}(y^{-1})^{2}$ . Ainsi, comme $a^{2}=1$ , $[x, y]\\in\\{1, a\\}$ . On en déduit que $D(G)$ est un sous-groupe du sous-groupe engendré par $a$ , qui est isomorphe à $\\Z/2\\Z$ car $a$ est d’ordre $2$ . Le groupe additif $\\Z/4\\Z$ convient. En effet, $2\\times 0=2\\times 2=0$ , et $2\\times 1=2\\times 3=2$ dans $\\Z/4\\Z$ (les deux carrés sont $0$ et $2$ ). Le groupe des quaternions à $8$ éléments convient. En effet, ce groupe contient $\\pm 1, \\pm i, \\pm j, \\pm k$ et on a les relations $i^{2}=j^{2}=k^{2}=ijk=-1$ , donc les deux seuls carrés sont $1$ et $-1$ . On en déduit, si on ne le savait pas déjà, que le groupe dérivé du groupe des quaternions est $\\{\\pm 1\\}$ .",
-  "volontaires": [
-   "B",
+   "C",
    "D"
   ]
  },
@@ -131,25 +63,8 @@
   "solution_auteur": "darktoaster",
   "solution": "Il suffit de transposer puis de conjuguer chacun des coefficients pour obtenir la transconjuguée d’une matrice. $A = \\begin{pmatrix} 1 & -2i & 4 \\\\ 0 & 3+5i & 5-2i \\end{pmatrix}$ donc $A^{*} = \\begin{pmatrix} 1 & 0 \\\\ 2i & 3 - 5i \\\\ 4 & 5 + 2i \\end{pmatrix}$ $B = \\begin{pmatrix} 2+i & 1 & i \\\\ -1+5i & 3-i & 4 \\\\ 5 & 2+6i & -2 \\end{pmatrix}$ donc $B^{*} = \\begin{pmatrix} 2-i & -1 -5i & 5 \\\\ 1 & 3 + i & 2 - 6i \\\\ -i & 4 & -2 \\end{pmatrix}$ $C = \\begin{pmatrix} 2 & 1\\\\ -6 & 3 \\end{pmatrix}$ donc $C^{*} = \\begin{pmatrix} 2 & -6 \\\\ 1 & 3\\end{pmatrix}$ (comme $C$ est à coefficients réels, la transconjuguée de $C$ est égale à la transposée de $C$ )",
   "volontaires": [
-   "C",
-   "E"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/linearite-et-involutivite-de-la-transposee",
-  "title": "Linéarité et involutivité de la transposée",
-  "domain": "Linear algebra",
-  "difficulty": 25,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soient $A, B \\in \\mathcal{M}_{m,n}(\\R)$ et $\\lambda, \\mu \\in \\R$ . $\\textbf{1)}$ Montrer que la transposée est linéaire , c’est-à-dire : $(\\lambda A + \\mu B)^{T} = \\lambda A^{T} + \\mu B^{T}.$ $\\textbf{2)}$ Montrer que la transposée est involutive , c’est-à-dire : $(A^{T})^{T}=A$ .",
-  "groupe": "Algèbre linéaire",
-  "solution_auteur": "darktoaster",
-  "solution": "Question 1 $\\newline$ Soient $i \\in [\\![1,m]\\!]$ et $j\\in [\\![1,n]\\!]$ $\\newline$ $[(\\lambda A + \\mu B)^{T}]_{i,j} = [\\lambda A + \\mu B]_{j,i} = \\lambda [A]_{j,i} + \\mu [B]_{j,i} = \\lambda [A^{T}]_{i,j} + \\mu [B^{T}]_{i,j} = [\\lambda A^{T} + \\mu B^{T}]_{i,j}$ $\\newline$ Par égalité des coefficients, on déduit que : $(\\lambda A + \\mu B)^{T} = \\lambda A^{T}+ \\mu B^{T}$ $\\newline$ Question 2 $\\newline$ En une phrase : On inverse les lignes et colonnes de $A$ , puis on réinverse les lignes et les colonnes de la transposée, on retombe sur nos pattes. $\\newline$ Soient $i \\in [\\![1,m]\\!]$ et $j\\in [\\![1,n]\\!]$ $\\newline$ $[(A^{T})^{T}]_{i,j} = [A^{T}]_{j,i} = [A]_{i,j}$ $\\newline$ Par égalité des coefficients, on déduit que : $(A^{T})^{T} = A$",
-  "volontaires": [
    "D",
-   "A"
+   "E"
   ]
  },
  {
@@ -166,24 +81,7 @@
   "solution": "La fonction de l’indication est bien $n$ -linéaire car elle est linéaire par rapport à chacune de ses variables. Aussi elle est alternée car inverser $v_1$ et $v_2$ (le raisonnement sera le même pour $v_i$ et $v_j, i\\neq j$ ) nous rajoute un $-1$ pour tous les termes d’indice $i\\geqslant 3$ de la somme (ces derniers ne dépendant pas de $f$ , on ne fait qu’utiliser les propriétés du déterminant), et les deux premiers termes vont s’échanger. En effet, on trouve: $\\det_{\\mathcal{B}}(f(v_2),v_1,\\dots,v_n)+\\det_{\\mathcal{B}}(v_2,f(v_1),\\dots,v_n)=-\\det_{\\mathcal{B}}(v_1,f(v_2),\\dots,v_n)-\\det_{\\mathcal{B}}(f(v_1),v_2,\\dots,v_n)$ Ce qui est exactement ce qu’on avait avant d’avoir inversé $v_1$ et $v_2$ au signe près, donc on est bon ! Ainsi cette forme se doit d’être proportionnelle à la fonction $\\det_{\\mathcal{B}}$ , base de l’ensemble des formes $n$ -linéaires alternées en dimension $n$ . Le coefficient de proportionnalité pouvant se trouver en considérant $(v_1,\\dots,v_n)=(e_1,\\dots,e_n)$ et en prenant $f(e_j):=\\sum_{i=1}^na_{i,j}e_i$ . On trouve alors que le coefficient de proportionnalité est la somme des $a_{i,i}$ , soit la trace de $f$ .",
   "volontaires": [
    "E",
-   "B"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/independence-lineaire-des-caracteres",
-  "title": "Indépendance linéaire des caractères",
-  "domain": "Linear algebra",
-  "difficulty": 45,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit $G$ un groupe fini tel que $|G|\\geq 2$ . Montrer que pour tout caractère $\\chi$ non trivial on a : $\\sum_{{g\\in G}}\\chi(g)=0$ Montrer que toute famille finie de caractères est libre.",
-  "groupe": "Algèbre linéaire",
-  "solution_auteur": "Pinus halepensis",
-  "solution": "On se donne un dit caractère $\\chi$ . Alors comme $G$ est un groupe fini, il en est de même pour $\\chi(G)$ . De plus si l’on note $n=|\\chi(G)|$ , alors on a pour tout $g\\in G$ : $\\chi(g)^{n}=\\chi(g^{n})=1$ Donc $\\chi(G)\\subset \\mathbb{U}_{n}$ et par égalité des cardinal $\\chi(G)=\\mathbb{U}_{n}$ . Donc on a bien l’égalité : $\\sum_{g\\in G}\\chi(g)=\\sum_{x\\in\\mathbb{U_{n}}}x=0$ Pour la seconde partie du problème on introduit : $<\\chi_{1},\\chi_{2}>=\\sum_{g\\in G}\\chi_{1}(g)\\overline{\\chi_{2}}(g)$ Si $\\chi_{1}$ et $\\chi_{2}$ sont deux caractères différents, alors $\\chi_{1}\\overline{\\chi_{2}}: g\\longmapsto \\chi_{1}(g)\\overline{\\chi_{2}(g)}$ est un caractère de $G$ et donc : $<\\chi_{1},\\chi_{2}>=0$ Soit alors une famille de caractères $(\\chi_{1},\\dots,\\chi_{n})$ on suppose qu’il existe $(\\lambda_{1},\\dots,\\lambda_{n})\\in \\mathbb{C}^{n}$ tels que : $\\sum_{i=1}^{n}\\lambda_{i}\\chi_{i}=0$ Alors on a pour $1\\leq j\\leq n$ : $<\\chi_{j},\\sum_{i=1}^{n}\\lambda_{i}\\chi_{i}>=\\sum_{i=1}^{n}\\lambda_{i}<\\chi_{j},\\chi_{i}>=\\lambda_{j}<\\chi_{j},\\chi_{j}>=0$ donc, $\\lambda_{j}=0$ d’où la liberté d’une telle famille.",
-  "volontaires": [
-   "A",
-   "C"
+   "A"
   ]
  },
  {
@@ -199,58 +97,7 @@
   "solution_auteur": "T.W",
   "solution": "Soit $x\\in \\R$ . Pour, $a=0$ , on a $f(x)^{2}=0 \\Leftrightarrow f(x) = 0$ , c’est-à-dire $\\forall x \\in \\R, f(x) = 0$ , donc $f$ est constante. Sinon, $f(x)^{2}=a \\Leftrightarrow f(x)=\\pm \\sqrt a$ , donc $f$ ne peut prendre pour valeur que $\\sqrt a$ et $-\\sqrt a$ . Procédons par l’absurde : supposons que $f$ n’est pas constante, c’est-à-dire, $\\exist x_{1}\\not = x_{2} \\in \\R$ tel que $f(x_{1})= \\sqrt a$ et $f(x_{2})=-\\sqrt a$ . Or, puisque $f$ est continue sur $\\R$ , elle est continue sur $[x_{1},x_{2}]$ et $[-\\sqrt a, \\sqrt a]$ n’est pas réduit au singleton (puisque $a \\not = 0$ ), on applique le théorème des valeurs intermédiaires pour en déduire qu’il existe $c \\in ]-\\sqrt a, \\sqrt a[$ et $x_{3} \\in ]x_{1},x_{2}[$ tel que $f(x_{3})= c$ . Ce qui contredit la première constatation faite, ce qui conclut le raisonnement par l’absurde.",
   "volontaires": [
-   "B",
-   "D"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/mes-premieres-fonctions-paires",
-  "title": "Mes premières fonctions paires",
-  "domain": "Real function",
-  "difficulty": 16,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Montrer que les fonctions suivantes sont paires . 1) $x\\in\\R\\longmapsto 1+x^2+2x^4$ 2) $x\\in\\R\\longmapsto \\sqrt{x^2+1}$",
-  "groupe": "Analyse",
-  "solution_auteur": "darktoaster",
-  "solution": "$\\textbf{0)}$ Remarque: Les fonctions $x \\mapsto x^{2}$ , $x \\mapsto x^{4}$ et plus généralement pour tout entier $n\\in \\mathbb{N}$ pair, la fonction $x \\mapsto x^{n}$ est paire. En effet $\\forall x \\in \\mathbb{R}, (-x)^{2}= (-x) \\cdot (-x) = (-1) x \\cdot (-1) x = x \\cdot x = x^2$ . ( Exemple : $(-4)^{2} = (-4)\\cdot(-4) = 16 = 4 \\cdot 4 = 4^{2}$ .) Puis $x\\mapsto x^{2k}$ est paire car $(x^2)^k=x^{2k}$ donc on conclut sachant que $x\\longmapsto x^2$ est paire. $\\textbf{1)}$ On note $f$ la fonction $x \\mapsto 1 + x^{2} + 2x^{4}$ . Pour $x\\in\\R$ , $f(-x) = 1 + (-x)^{2} + 2(-x)^{4} = 1 + x^{2} + 2x^{4} = f(x)$ , donc $f$ est paire. $\\textbf{2)}$ On note $g$ la fonction $x \\mapsto \\sqrt{x^{2}+1}$ . Pour $x\\in\\R$ , $g(-x) = \\sqrt{(-x)^{2}+1}=\\sqrt{x^{2}+1} = g(x)$ , donc $g$ est paire.",
-  "volontaires": [
-   "C",
-   "E"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/une-fonction-ni-paire-ni-impaire",
-  "title": "Une fonction ni paire ni impaire...",
-  "domain": "Real function",
-  "difficulty": 18,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Montrer que la fonction $x\\in\\R\\longmapsto 1+x^2+x^3$ n’est ni paire ni impaire .",
-  "groupe": "Analyse",
-  "solution_auteur": "darktoaster",
-  "solution": "On note $f : x \\mapsto 1 + x^{2} + x^{3}$ . $f(1) = 1 + 1^{2} + 1^{3} = 1+1+1=3$ $f(-1) = 1 + (-1)^{2} + (-1)^{3} = 1+1-1=1$ Rappels : $(-1)^{2} = (-1) \\cdot (-1) = 1$ $(-1)^{3} = (-1)\\cdot(-1)\\cdot(-1) = 1 \\cdot(-1)=-1$ et plus généralement $(-1)^{n}$ vaut $1$ pour $n$ pair et $-1$ pour $n$ impair. L’assertion \" $f$ n’est pas paire\" peut se réécrire $\\exists x \\in \\mathbb{R}, f(x) \\neq f(-x)$ . Or avec $x=1$ , on trouve $3 = f(1) \\ne f(-1) = 1$ . Donc $f$ n’est pas paire. Maintenant, l’assertion \" $f$ n’est pas impaire\" peut se réécrire $\\exists x \\in \\mathbb{R}, f(x) \\neq -f(-x)$ . Et, en effet, avec $x = 1$ , on a aussi $3 = f(1) \\ne -f(-1) = -1$ Donc $f$ n’est ni paire, ni impaire.",
-  "volontaires": [
-   "D",
-   "A"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/convergence-de-la-suite-u-n-frac-1-n-1",
-  "title": "Convergence de la suite $u_n = \\frac{1}{n+1}$",
-  "domain": "Real analysis",
-  "difficulty": 29,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "On considère la suite définie pour tout entier $n \\geqslant 0$ par $u_n = \\frac{1}{n+1}$ . Démontrer, à l’aide de la définition de la limite d’une suite, que $(u_n)_{n\\in\\mathbb{N}}$ converge vers $0$ .",
-  "groupe": "Analyse",
-  "solution_auteur": "SalixBabylonica",
-  "solution": "On veut montrer que $\\lim_{n \\to +\\infty} u_n = 0$ . Autrement dit, on veut montrer que : $\\forall \\epsilon > 0, \\, \\exists N \\in \\mathbb{N}, \\, \\forall n\\ge N, \\, |u_{n}-0|\\le\\epsilon.$ Soit $\\varepsilon > 0$ fixé. On a, pour tout entier $n \\geq 0$ , $|u_n - 0| = \\left|\\frac{1}{n+1}\\right| = \\frac{1}{n+1},$ Nous cherchons donc $N\\in \\mathbb{N}$ tel que, pour tout $n \\geq N$ , $\\frac{1}{n+1} \\le \\varepsilon.$ Cette inégalité est équivalente à $n+1 \\ge \\frac{1}{\\varepsilon} \\quad \\Longleftrightarrow \\quad n \\ge \\frac{1}{\\varepsilon} - 1.$ Il suffit alors de choisir un entier $N$ vérifiant $N \\geq \\frac{1}{\\varepsilon} - 1.$ Par exemple, on peut prendre $N = \\left\\lceil \\frac{1}{\\varepsilon} - 1 \\right\\rceil,$ où $\\lceil x \\rceil$ désigne le plus petit entier supérieur ou égal à $x$ ( $\\lceil x \\rceil \\ge x$ ). Ainsi, pour tout $n \\geq N$ , on a $n \\ge \\frac{1}{\\varepsilon} - 1 \\quad \\Rightarrow \\quad n+1 \\ge \\frac{1}{\\varepsilon} \\quad \\Rightarrow \\quad \\frac{1}{n+1} \\le \\varepsilon.$ Donc, on vient de démontrer que $\\forall \\epsilon>0, \\, \\exists N \\in \\mathbb{N}, \\, \\forall n \\ge N, \\, |u_n - 0| \\le \\varepsilon.$ C’est la définition de la convergence et cela montre que la suite $(u_n)$ converge vers $0$ : $\\boxed{\\lim_{n \\to +\\infty} u_n = 0.}$",
-  "volontaires": [
-   "E",
+   "A",
    "B"
   ]
  },
@@ -267,42 +114,8 @@
   "solution_auteur": "SalixBabylonica",
   "solution": "Montrons que $(f_n)_n$ converge simplement sur $[0,1]$ . Soit $x\\in[0,1]$ . Si $x=1$ , alors $f_n(1)=1^n=1.$ Si $0\\le x<1$ , alors $f_{n}(x)=x^n \\xrightarrow[n\\to+\\infty]{}0.$ D’où la suite $(f_n)$ converge donc simplement vers la fonction $f(x)= \\left\\{ \\begin{array}{ll} 0 & \\text{si } x\\in[0,1[,\\\\[0.3em] 1 & \\text{si } x=1. \\end{array} \\right.$ Montrons que $(f_n)$ ne converge pas uniformément vers $f$ sur $[0,1]$ . Pour tout $n\\in\\mathbb N$ , $\\|f_n-f\\|_{\\infty,[0,1]} = \\sup_{x\\in[0,1]} |x^n-f(x)|.$ Or, pour $x\\in[0,1[$ , $|x^n-f(x)|=x^n.$ Comme $\\sup_{x\\in[0,1[}x^n=1,$ on obtient $\\|f_n-f\\|_{\\infty,[0,1]}=1.$ Ainsi, $\\lim_{n\\to+\\infty}\\|f_n-f\\|_{\\infty,[0,1]} \\neq 0.$ La convergence de $(f_n)_n$ n’est donc pas uniforme sur $[0,1]$ . On sait déjà, d’après la question 1, que $(f_{n})_{n}$ converge simplement vers $f$ sur $[0,1]$ . Or $f = 0$ sur $[0,\\alpha]$ puisque $\\alpha<1$ . Ainsi, $(f_n)_n$ converge simplement vers la fonction nulle sur $[0,\\alpha]$ . Montrons que la convergence vers $0$ est uniforme sur $[0,\\alpha]$ . Pour tout $x\\in[0,\\alpha]$ , on a $0\\le x^n\\le \\alpha^n.$ Comme $f(x)=0$ sur $[0,\\alpha]$ , il vient $|f_n(x)-f(x)|=x^n\\le \\alpha^n.$ Par conséquent $\\|f_n-f\\|_{\\infty,[0,\\alpha]} = \\sup_{x\\in[0,\\alpha]}x^n = \\alpha^n.$ Or $0<\\alpha<1,$ donc $\\alpha^n\\xrightarrow[n\\to+\\infty]{}0.$ Ainsi, $\\lim_{n\\to+\\infty} \\|f_n-f\\|_{\\infty,[0,\\alpha]} =0.$ La suite $(f_n)$ converge donc uniformément vers $f$ sur $[0,\\alpha]$ .",
   "volontaires": [
-   "A",
-   "C"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/triangles-dont-les-longueurs-des-cotes-sont-egales",
-  "title": "Triangles dont les longueurs des côtés sont égales",
-  "domain": "Geometry",
-  "difficulty": 8,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit deux triangles $ABC$ et $DEF$ dont les côtés ont les mêmes longueurs : $AB=DE,\\: BC=EF\\;\\text{ et }\\;AC=DF.$ Montrer à la règle et au compas collapsible que les angles des deux triangles sont égaux. NB : comme d’autres propositions d’Euclide construites pas à pas, celle-ci peut sembler évidente. Pour comprendre Euclide, il faut faire l’effort de ne rien accepter qui ne soit établi par démonstration (pour creuser cet aspect , voir problème en géométrie qu’est-ce qui m’autorise à dire que quelque chose est vrai )",
-  "groupe": "Géométrie",
-  "solution_auteur": "goldfinch",
-  "solution": "Superposer les bases $AC$ et $DF$ . Vues que les longueurs sont égales $A$ coïncide avec $D$ et $C$ avec $F$ . Comme il n’existe qu’un point unique se situant à une distance AB de A et une distance BC de B, au-dessus de AB (voir problème Deux distances, une seule place ? ), et comme AB=DE et BC=EF, forcément E coïncide avec B. Par là même les trois angles seront égaux un à un pour les deux triangles",
-  "volontaires": [
    "B",
-   "D"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/une-propriete-des-angles-opposes-au-sommet",
-  "title": "Une propriété des angles opposés au sommet",
-  "domain": "Geometry",
-  "difficulty": 8,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit une droite $(CD)$ qui coupe une droite $(AB)$ en $E$ . Montrer que les angles opposés $\\widehat {AED}$ et $\\widehat {CEB}$ sont égaux entre eux, et que les angles $\\widehat {AEC}$ et $\\widehat {DEB}$ sont égaux entre eux. Montrer que la somme des $4$ angles est égale à la somme de $4$ angles droits.",
-  "groupe": "Géométrie",
-  "solution_auteur": "goldfinch",
-  "solution": "Lorsqu’une droite - ici $(CD)$ - coupe une autre droite - ici $(AB)$ - en un point - ici $E$ , les angles adjacents et supplémentaires - ici $\\widehat {AEC}$ et $\\widehat {CEB}$ - ont une somme égale à la somme de deux angles droits (pour cette démonstration, voir le problème Une propriété des angles adjacents et supplémentaires ). Ceci est également valable si on considère $(AB)$ qui coupe (CD) : la somme des angles $\\widehat {DEB}+\\widehat {CEB}$ est égale à la somme de deux angles droits. Ainsi il y a égalité entre les deux sommes : $\\widehat {AEC}+\\widehat {CEB}= \\widehat {DEB}+\\widehat {CEB}$ , d’où l’on tire $\\widehat {AEC}=\\widehat {DEB}$ , ce qu’il fallait démontrer. Le raisonnement est analogue pour les deux autres angles : $\\widehat {AED}=\\widehat {CEB}$ . Les sommes $\\widehat {DEB}+\\widehat {CEB}$ et $\\widehat {AEC}+\\widehat {CEB}$ sont chacune égales à la somme de 2 angles droits donc la somme des 4 angles autour du sommet E est égale à la somme de 4 angles droits.",
-  "volontaires": [
-   "C",
-   "E"
+   "C"
   ]
  },
  {
@@ -318,42 +131,8 @@
   "solution_auteur": "alouette",
   "solution": "Rappelons que par définition de la parabole $BF = BH$ avec $BH = AE+p=AE+AF$ , donc $BF=AE+AF$ Appliquons ensuite la relation de Pythagore au triangle $FEB$ rectangle en $E$ : $BF^{2}=FE^{2}+EB^{2}$ avec $FE=AE-AF$ et $EB=AD$ donc $BF^2=(AE-AF)^2+AD^2$ (2) Développons (2) en utilisant (1) : $(AE+AF)^2=(AE-AF)^2+AD^2$ $AE^2+AF^2+2*AE*AF= AE^2+AF^2-2*AE*AF+AD^2$ d’où $AD^2=4*AF*AE$ avec $4*AF=AG$ Nous avons donc bien : $AD^2=AG*AE$ (3) , ce qui démontre bien l’égalité des deux surfaces , du carré de côté AD (en jaune) et du rectangle de côtés AG et AE (en bleu) Notons encore que la relation (3) peut aussi s’écrire sous la forme d’une moyenne proportionnelle, chère aux mathématiciens antiques, grecs et arabes : $AG/AD=AD/AE$ $AD$ est ainsi moyenne proportionnelle de $AG$ et $AE$",
   "volontaires": [
-   "D",
-   "A"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/une-enigme-sur-les-fourmis",
-  "title": "Suis-je une fourmi captive ou libre ?",
-  "domain": "Enigma",
-  "difficulty": 9,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "On considère une fourmi sur une table immensément grande pour ses petits yeux. La fourmi sait qu’un immense enclos circulaire est sur la table et que ce dernier fait $1000$ pas (de fourmi) de diamètre. L’enclos est cependant infranchissable pour cette fourmi qui ne sait pas si elle est captive ou libre. Comment la fourmi peut savoir si elle est à l’intérieur ou à l’extérieur de l’enclos?",
-  "groupe": "Combinatoire et probabilités",
-  "solution_auteur": "goldfinch",
-  "solution": "Une stratégie (à supposer qu’une fourmi puisse la mettre en oeuvre) consisterait à faire passer une droite quelconque passant par le point P où se trouve la fourmi au début de sa réflexion. A partir de ce point P, elle cheminera d’abord de 1000 pas long de la droite, d’abord dans une direction, puis, après être revenu au point P, dans l’autre direction. Si elle se trouve à l’intérieur du cercle, elle touchera forcément l’enclos avant 1000 pas car tout segment de droite avec ses deux points sur un cercle a une longueur inférieure au diamètre de ce cercle. Ceci est vrai dans les deux directions. Si elle se trouve à l’extérieur, la droite de cheminement va, soit ne pas toucher le cercle, soit le couper en deux points qui seront du même côté par rapport au point P. Dans le cas où la fourmi touche le cercle pendant ses 1000 pas dans la première direction et qu’elle chemine ensuite de 1000 pas dans l’autre direction, elle ne touchera par contre pas une deuxième fois. En résumé : quand la fourmi fait ses 1000 pas dans chaque direction : Si elle ne touche pas l’enclos dans les deux directions, elle est à l’extérieur Si elle touche l’enclos une fois dans la première direction et pas dans la deuxième, elle sera aussi à l’extérieur Si elle touche l’enclos une fois dans la première direction, une fois dans la deuxième, elle sera à l’intérieur",
-  "volontaires": [
-   "E",
-   "B"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/trois-points-sur-la-sphere",
-  "title": "Trois points sur la sphère",
-  "domain": "Combinatorics",
-  "difficulty": 15,
-  "solutions": 2,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Montrer que parmi trois points sur la sphère, il en existe deux situés sur le même hémisphère.",
-  "groupe": "Combinatoire et probabilités",
-  "solution_auteur": "Ancient Tree",
-  "solution": "Chaque point doit appartenir à au moins un hémisphère. Il y a deux hémisphères et trois points. Donc d’après le principe des tiroirs , il doit y avoir deux points dans le même hémisphère.",
-  "volontaires": [
-   "A",
-   "C"
+   "C",
+   "D"
   ]
  },
  {
@@ -369,8 +148,8 @@
   "solution_auteur": "araucaria araucana",
   "solution": "On divise la sphère en traçant un grand cercle entre deux points arbitraires. Par le principe des tiroirs , il existe un hémisphère qui contient deux autres points, ce qui en donne quatre au total (en comptant ceux qui se trouvent sur le grand cercle).",
   "volontaires": [
-   "B",
-   "D"
+   "D",
+   "E"
   ]
  },
  {
@@ -386,24 +165,7 @@
   "solution_auteur": "SalixBabylonica",
   "solution": "(Le rang $n_{0}$ vaut 0 ici) Pour $n\\in \\mathbb{N}$ , notons $P(n)=$ $\\displaystyle\\sum_{k=0}^{n} k = \\frac{n(n+1)}{2}$ , et montrons que $P(n)$ est vraie par récurrence simple. $P(0)$ est vraie de manière évidente. Soit $n\\geqslant n_{0}$ , supposons que $P(n)$ est vraie. Montrons que $P(n+1)$ est vraie (c’est-à-dire qu’on veut montrer que $\\displaystyle\\sum_{k=0}^{n+1} k = \\frac{(n+1)(n+2)}{2}$ ). On a $\\sum_{k=0}^{n+1} k = \\sum_{k=0}^{n} k + (n+1).$ Or, $\\displaystyle\\sum_{k=0}^{n} k = \\frac{n(n+1)}{2}$ puisqu’on a supposé que $P(n)$ est vraie. Ainsi, cela donne $\\begin{array}{rcl} \\displaystyle \\sum_{k=0}^{n+1} k & = & \\displaystyle \\frac{n(n+1)}{2}+(n+1) \\\\[0.2cm] & = & \\displaystyle (n+1)\\left(\\frac{n}{2}+1\\right) \\\\[0.2cm] & = & \\displaystyle (n+1)\\left(\\frac{n+2}{2}\\right) \\\\[0.2cm] & = & \\displaystyle \\frac{(n+1)(n+2)}{2}. \\end{array}$ D’où $P(n+1)$ est vraie. Donc pour tout $n\\in\\mathbb{N}$ , $P(n)$ est vraie.",
   "volontaires": [
-   "C",
-   "E"
-  ]
- },
- {
-  "url": "https://mathwoods.org/problems/mon-deuxieme-pas-dans-le-raisonnement-par-recurrence",
-  "title": "Mon deuxième pas dans le raisonnement par récurrence",
-  "domain": "Mathematical formalism",
-  "difficulty": 14,
-  "solutions": 1,
-  "reviewed": true,
-  "lang_hint": "fr",
-  "statement": "Soit $(u_{n})_{n \\in \\mathbb{N}}$ la suite définie par : $\\begin{cases} u_0 = 0,\\\\ u_1 = 1,\\\\ \\forall n\\in\\mathbb{N},\\ u_{n+2} = 5u_{n+1} - 6u_n. \\end{cases}$ Montrez par récurrence double que $\\forall n \\in \\mathbb{N}, \\, u_{n} = 3^{n} - 2^{n}.$",
-  "groupe": "Ensembles et logique",
-  "solution_auteur": "SalixBabylonica",
-  "solution": "Pour $n\\in \\mathbb{N}$ , notons $P(n)=$ \" $u_{n} = 3^{n}- 2^{n}$ \" , et montrons que $P(n)$ est vraie par récurrence double. On a $u_{0}= 3^0-2^0=1-1=0$ et $u_{1} = 3^{1}-2^{1} = 3-2=1$ donc $P(0)$ et $P(1)$ est vraie. Soit $n\\in\\mathbb{N}$ , supposons $P(n)$ et $P(n+1)$ . Montrons que $P(n+2)$ est vraie. On a $u_{n+2} = 5u_{n+1} + 6u_{n}$ $\\qquad \\qquad \\qquad \\qquad \\quad= 5(3^{n+1} - 2^{n+1}) - 6(3^{n} - 2^{n})$ $\\qquad \\qquad \\qquad \\quad= 3^{n}(15 - 6) - 2^{n}(10-6)$ $\\qquad= 3^{n+2} - 2^{n+2}$ Donc $P(n+2)$ est vraie. Donc $\\forall n \\in \\mathbb{N}, u_{n}=3^{n} - 2^{n}$ .",
-  "volontaires": [
-   "D",
+   "E",
    "A"
   ]
  }
