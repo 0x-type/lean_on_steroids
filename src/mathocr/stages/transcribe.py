@@ -304,6 +304,8 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
                     scale = min(1.0, 4000 / max(im.size))
                     rw, rh = im.width * scale, im.height * scale
                     raw = eng.ocr_lines(to_part(im, f"page {pno}", max_side=4000))
+                    from ..llm.pricing import record
+                    record(engine=eng.name, model="mathpix", images=1)
                     runs[eng.name] = [WireLine(bbox=[int(b["bbox"][0] * 1000 / rw), int(b["bbox"][1] * 1000 / rh),
                                                      int(b["bbox"][2] * 1000 / rw), int(b["bbox"][3] * 1000 / rh)],
                                                text=b["text"], confidence=b["confidence"]) for b in raw]

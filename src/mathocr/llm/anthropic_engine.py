@@ -45,6 +45,11 @@ class AnthropicEngine(Engine):
             raise EngineError(f"{self.name} : erreur API {ex.status_code} ({ex.message})") from ex
         except a.APIConnectionError as ex:
             raise EngineError(f"{self.name} : connexion impossible") from ex
+        u = resp.usage
+        self.last_usage = {"input_tokens": (u.input_tokens or 0) + (getattr(u, "cache_read_input_tokens", 0) or 0)
+                           + (getattr(u, "cache_creation_input_tokens", 0) or 0),
+                           "output_tokens": u.output_tokens or 0,
+                           "cache_read_tokens": getattr(u, "cache_read_input_tokens", 0) or 0}
         if resp.stop_reason == "refusal":
             raise EngineError(f"{self.name} : requête refusée ({getattr(resp.stop_details, 'category', None)})")
         if resp.stop_reason == "max_tokens":

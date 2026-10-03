@@ -37,6 +37,10 @@ def _summary(r: RunResult, out: Path) -> str:
         ver = re.search(r"version ([\w.\-]+)", r.lean.run.lean_version)
         lines.append(f"Lean {ver.group(1) if ver else '?'} · isolation {r.lean.run.sandbox} · "
                      f"{r.lean.run.seconds:.1f} s")
+    if r.costs is not None:
+        c = r.costs
+        lines.append(f"Coût : {c.total_usd:.4f} $" + ("" if c.complete else " (+ appels sans prix connu)")
+                     + f" · {c.llm_calls} appel(s) aux modèles, {c.cached_calls} servi(s) par le cache")
     lines.append(f"Retour : {r.feedback.summary}")
     lines.append(f"Rapport : {out / 'rapport.html'}")
     return "\n".join(lines)

@@ -39,6 +39,11 @@ class OpenAIEngine(Engine):
             raise EngineError(f"{self.name} : erreur API {ex.status_code}") from ex
         except o.APIConnectionError as ex:
             raise EngineError(f"{self.name} : connexion impossible") from ex
+        u = getattr(resp, "usage", None)
+        if u is not None:
+            cached = getattr(getattr(u, "input_tokens_details", None), "cached_tokens", 0) or 0
+            self.last_usage = {"input_tokens": u.input_tokens or 0, "output_tokens": u.output_tokens or 0,
+                               "cache_read_tokens": cached}
         if resp.output_parsed is None:
             raise EngineError(f"{self.name} : sortie structurée absente")
         return resp.output_parsed

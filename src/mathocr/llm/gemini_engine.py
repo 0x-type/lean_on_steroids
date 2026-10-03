@@ -37,6 +37,11 @@ class GeminiEngine(Engine):
             )
         except Exception as ex:  # noqa: BLE001 - le SDK lève des classes variées selon le transport
             raise EngineError(f"{self.name} : {type(ex).__name__} {str(ex)[:200]}") from ex
+        m = getattr(resp, "usage_metadata", None)
+        if m is not None:
+            self.last_usage = {"input_tokens": m.prompt_token_count or 0,
+                               "output_tokens": (m.candidates_token_count or 0) + (getattr(m, "thoughts_token_count", 0) or 0),
+                               "cache_read_tokens": getattr(m, "cached_content_token_count", 0) or 0}
         parsed = getattr(resp, "parsed", None)
         if parsed is None:
             try:

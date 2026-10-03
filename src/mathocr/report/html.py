@@ -225,6 +225,22 @@ def render_html(r: RunResult, out_dir: Path | None = None) -> str:
                     if out_dir else "")
                  + "</section>")
 
+    cost_html = ""
+    if r.costs is not None:
+        c = r.costs
+        rows = "".join(
+            f"<tr><td>{e(x.stage)}</td><td><code>{e(x.engine)}</code></td><td>{x.input_tokens}</td>"
+            f"<td>{x.output_tokens}</td><td>{'cache' if x.cached else ''}{(str(x.images) + ' image') if x.images else ''}</td>"
+            f"<td>{'—' if x.cost_usd is None else f'{x.cost_usd:.4f} $'}</td></tr>" for x in c.entries)
+        cost_html = ('<section><h2>Coût de la correction</h2><div class="kv">'
+                     f'<div>Total</div><div><strong>{c.total_usd:.4f} $</strong>'
+                     f'{"" if c.complete else " <span class=warn>(certains prix inconnus)</span>"}</div>'
+                     f'<div>Appels aux modèles</div><div>{c.llm_calls} (+ {c.cached_calls} servis par le cache)</div>'
+                     f'<div>Lean (local)</div><div>{c.lean_seconds:.1f} s de calcul, gratuit</div></div>'
+                     + (('<table><tr><th>Étape</th><th>Moteur</th><th>Entrée</th><th>Sortie</th><th></th><th>Coût</th></tr>'
+                         + rows + "</table>") if c.entries else
+                        '<div class="sub">Aucun appel à un modèle pour cette copie.</div>')
+                     + "</section>")
     others = [c for c in r.fidelity if c.kind in ("couverture", "structure") or c.step_id not in {s.id for s in r.structure.steps}]
     fid_html = ""
     if others:
@@ -244,7 +260,7 @@ def render_html(r: RunResult, out_dir: Path | None = None) -> str:
 <header><button class="toggle" id="theme">thème</button><h1>Correction — {e(r.exercise.exercise_id)}</h1>{stmt}
 <div class="sub">Formalisation Lean de l’énoncé : <code>{e(r.exercise.lean_statement)}</code> — validée par : {e(r.exercise.validated_by or "NON VALIDÉE")}</div></header>
 <main><div><div class="sticky">{''.join(photos)}</div></div>
-<div>{verdict_html}{fb_html}{steps_html}{unc_html}{tr_html}{lean_html}{fid_html}</div></main>
+<div>{verdict_html}{fb_html}{steps_html}{unc_html}{tr_html}{lean_html}{cost_html}{fid_html}</div></main>
 <script>{JS}</script></body></html>"""
 
 

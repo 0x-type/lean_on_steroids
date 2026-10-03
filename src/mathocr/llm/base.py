@@ -42,6 +42,8 @@ class Engine:
 
     name: str = "engine"
     model: str = ""
+    # Jetons consommés par le dernier appel : {input_tokens, output_tokens, cache_read_tokens}
+    last_usage: dict | None = None
 
     def structured(self, system: str, text: str, images: list[ImagePart], schema: type[T],
                    *, effort: str = "high") -> T:  # pragma: no cover - interface
@@ -72,15 +74,23 @@ class CachedEngine(Engine):
     def structured(self, system, text, images, schema, *, effort="high"):
         key = self._key(system, text, images, schema, effort)
         path = self.cache_dir / f"{self.name.replace(':', '_')}_{schema.__name__}_{key}.json"
+        from .pricing import record
+
         if path.exists():
-            return schema.model_validate_json(json.loads(path.read_text())["output"])
+            data = json.loads(path.read_text())
+            usage = data.get("usage") or {}
+            record(engine=self.name, model=self.model, cached=True, **usage)
+            return schema.model_validate_json(data["output"])
         if self.replay_only:
             raise EngineError(f"réponse absente du cache de rejeu : {path.name}")
         t0 = time.monotonic()
+        self.inner.last_usage = None
         out = self.inner.structured(system, text, images, schema, effort=effort)
+        usage = self.inner.last_usage or {}
+        record(engine=self.name, model=self.model, cached=False, **usage)
         path.write_text(json.dumps({
             "engine": self.name, "model": self.model, "schema": schema.__name__,
-            "seconds": round(time.monotonic() - t0, 2), "system": system, "text": text,
+            "seconds": round(time.monotonic() - t0, 2), "usage": usage, "system": system, "text": text,
             "images": [im.label or f"{len(im.data)} octets" for im in images],
             "output": out.model_dump_json(),
         }, ensure_ascii=False, indent=1))

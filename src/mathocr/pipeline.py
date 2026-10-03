@@ -60,7 +60,15 @@ def _save(out: Path, name: str, obj) -> None:
     (out / name).write_text(obj.model_dump_json(indent=1), encoding="utf-8")
 
 
-def run(
+def run(exercise: Path, images: list[Path], out_dir: Path, cfg: "PipelineConfig", **kw) -> RunResult:
+    """Exécute le pipeline en comptant les jetons et le coût de chaque appel aux modèles."""
+    from .llm.pricing import ledger_scope
+
+    with ledger_scope() as led:
+        return _run(exercise, images, out_dir, cfg, led=led, **kw)
+
+
+def _run(
     exercise: Path,
     images: list[Path],
     out_dir: Path,
@@ -69,11 +77,16 @@ def run(
     transcription: Path | None = None,
     structure: Path | None = None,
     formalization: Path | None = None,
+    led=None,
 ) -> RunResult:
+    from .llm.pricing import set_stage
+
     out_dir.mkdir(parents=True, exist_ok=True)
+    lean_seconds = 0.0
     ref = _load(exercise, ReferenceStatement)
 
     # 1. Transcription
+    set_stage("transcription")
     tr = _load(transcription, Transcription)
     if tr is None:
         from .stages.transcribe import transcribe
@@ -87,6 +100,7 @@ def run(
     _save(out_dir, "1_transcription.json", tr)
 
     # 2. Structure
+    set_stage("structure")
     st = _load(structure, ProofStructure)
     if st is None:
         from .stages.agents import extract_structure
@@ -94,6 +108,7 @@ def run(
     _save(out_dir, "2_structure.json", st)
 
     # 3. Formalisation
+    set_stage("formalisation")
     fm = _load(formalization, Formalization)
     if fm is None:
         from .stages.agents import formalize
@@ -103,15 +118,19 @@ def run(
     # 4. Lean
     scfg = SandboxConfig(workspace=cfg.workspace, backend=cfg.sandbox, wall_timeout_s=cfg.lean_timeout_s,
                          memory_mb=cfg.lean_memory_mb)
+    set_stage("lean")
     lean, evals = verify(ref, st, fm, scfg, out_dir)
+    lean_seconds += lean.run.seconds if lean.run else 0.0
     if cfg.tier2 and cfg.reasoning_engine and any(c.status == "non_verifie" for c in lean.steps):
         from .stages.agents import tier2_attempts
         fm = tier2_attempts(ref, st, fm, lean, cfg)
         _save(out_dir, "3b_formalisation_niveau2.json", fm)
         lean, evals = verify(ref, st, fm, scfg, out_dir)
+        lean_seconds += lean.run.seconds if lean.run else 0.0
     _save(out_dir, "4_lean.json", lean)
 
     # 5. Fidélité
+    set_stage("fidélité")
     fid = run_fidelity(tr, st, fm, lean, evals)
     if cfg.judge_engine:
         from .stages.agents import backtranslate
@@ -121,6 +140,7 @@ def run(
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)
 
     # 6. Verdict et retour
+    set_stage("retour")
     vr = decide(ref, tr, st, lean, fid, fm)
     fb = build_feedback(tr, st, lean, vr)
     if cfg.polish_feedback and cfg.reasoning_engine:
@@ -128,7 +148,8 @@ def run(
         fb = polish_feedback(fb, vr, st, cfg)
 
     result = RunResult(exercise=ref, transcription=tr, structure=st, formalization=fm, lean=lean,
-                       fidelity=fid, verdict=vr, feedback=fb)
+                       fidelity=fid, verdict=vr, feedback=fb,
+                       costs=led.report(lean_seconds) if led is not None else None)
     _save(out_dir, "resultat.json", result)
     from .report.html import render_html
     (out_dir / "rapport.html").write_text(render_html(result, out_dir), encoding="utf-8")

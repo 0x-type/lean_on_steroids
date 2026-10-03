@@ -367,3 +367,33 @@ class RunResult(BaseModel):
     fidelity: list[FidelityCheck]
     verdict: VerdictReport
     feedback: Feedback
+    costs: "CostReport | None" = None
+
+
+# ---------------------------------------------------------------------------
+# Coûts
+# ---------------------------------------------------------------------------
+
+
+class UsageEntry(BaseModel):
+    stage: str
+    engine: str
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    images: int = 0
+    cached: bool = False  # réponse servie par le cache : gratuite
+    cost_usd: float | None = None  # None = prix inconnu
+
+
+class CostReport(BaseModel):
+    entries: list[UsageEntry] = Field(default_factory=list)
+    total_usd: float = 0.0
+    complete: bool = True  # faux si au moins un appel n'a pas de prix connu
+    llm_calls: int = 0
+    cached_calls: int = 0
+    lean_seconds: float = 0.0
+
+
+RunResult.model_rebuild()
