@@ -537,7 +537,9 @@ def assemble(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lea
         lines.append(f"- {s_.id} ({s_.kind}{', implicite' if s_.implicit else ''}){where} : {s_.statement}"
                      + (f" — utilise {', '.join(s_.depends_on)}" if s_.depends_on else "")
                      + f" — Lean : {status.get(s_.id, '?')}")
-    kit = "; ".join(f"Kit.{k.nom} : {k.enonce}" for k in ref.kit.lemmes) if ref.kit else "(aucun)"
+    kit = "; ".join(f"Kit.{k.nom} : {k.enonce}" for k in ref.kit.lemmes
+                    if not k.theoreme or k.theoreme in fm.cites_copie) if ref.kit else ""
+    kit = kit or "(aucun)"
     task = prompts.ASSEMBLE_TASK.format(enonce=ref.lean_statement, contexte=_contexte(ref), kit=kit,
                                         etapes="\n".join(lines), signatures="\n".join(sigs))
     out = _engine(cfg).structured(prompts.ASSEMBLE_SYSTEM, task, [], WireAssemblage)
@@ -548,4 +550,31 @@ def assemble(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lea
         return fm, "assemblage refusé par la politique de sécurité"
     fm = fm.model_copy(deep=True)
     fm.assemblage_agent = proof
+    # Une reprise si Lean refuse l'assemblage (nom de lemme, syntaxe) : on renvoie ses messages à l'agent.
+    errs = _assembly_errors(ref, st, fm, cfg)
+    if errs:
+        out2 = _engine(cfg).structured(
+            prompts.ASSEMBLE_SYSTEM, task + "\n\nTa preuve précédente :\n" + proof
+            + "\n\nLean la refuse :\n" + "\n".join(errs)
+            + "\n\nCorrige la syntaxe ou les noms de lemmes, sans changer le raisonnement de l'élève.",
+            [], WireAssemblage)
+        proof2 = _admissible(out2.preuve, "assemblage (agent)") if out2.possible and out2.preuve.strip() else None
+        if proof2:
+            fm.assemblage_agent = proof2
     return fm, None
+
+
+def _assembly_errors(ref, st, fm, cfg) -> list[str]:
+    from ..lean.sandbox import run_lean
+
+    gen = LeanGenerator(ref, st, fm).generate()
+    seg = next((g for g in gen.segments if g.kind == "assembly_agent"), None)
+    if gen.violations or seg is None:
+        return []
+    try:
+        run = run_lean(gen.source, _sandbox(cfg))
+    except Exception as e:  # noqa: BLE001 — Lean indisponible : la vérification finale tranchera
+        log.warning("vérification de l'assemblage impossible : %s", e)
+        return []
+    return [f"ligne {m.line - seg.start} : {m.text[:300]}" for m in run.messages
+            if m.severity == "error" and seg.start <= m.line <= seg.end][:6]

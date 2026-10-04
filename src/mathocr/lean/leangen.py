@@ -36,6 +36,21 @@ EVAL_TYPES = {"ℕ", "Nat", "ℤ", "Int", "ℚ", "Rat"}
 MAX_POINTS = 12
 
 
+def _tactics(text: str) -> str:
+    """Bloc tactique d'un agent, indenté de deux espaces sous « := by ».
+
+    Les agents rendent souvent un bloc uniformément indenté (ou commencé par un « by » superflu) ; couper les
+    espaces de la seule première ligne (strip) cassait alors la mise en page, et Lean refusait une preuve juste."""
+    import textwrap
+
+    lines = textwrap.dedent(text.strip("\n")).rstrip().splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines and lines[0].strip() == "by":
+        lines = textwrap.dedent("\n".join(lines[1:])).splitlines()
+    return "\n".join(("  " + ln) if ln.strip() else "" for ln in lines)
+
+
 @dataclass
 class Segment:
     kind: str  # def | step | agent_proof | agent_refutation | sans_dep | refutation | assembly | accord | eval | axioms
@@ -362,7 +377,7 @@ class LeanGenerator:
             names = ", ".join(f"Kit.{k.nom}" for k in self.ref.kit.lemmes
                               if not k.theoreme or k.theoreme in self.fm.cites_copie) or "True.intro"
             body = "".join(f"/-- {k.description or k.nom} -/\ntheorem {k.nom} : {k.enonce} := by\n"
-                           + "\n".join("  " + ln for ln in k.preuve.strip().splitlines()) + "\n"
+                           + _tactics(k.preuve) + "\n"
                            for k in self.ref.kit.lemmes)
             w.block("kit", None, None,
                     "namespace Kit\n/-! Résultats du cours pour cet exercice, démontrés ici. -/\n" + body + "end Kit\n\n"
@@ -402,12 +417,12 @@ class LeanGenerator:
             theorems.append(f"{NS}.{step.id}")
 
             if f.agent_proof:
-                body = "\n".join("  " + ln for ln in f.agent_proof.strip().splitlines())
+                body = _tactics(f.agent_proof)
                 w.block("agent_proof", step.id, f"{NS}.{step.id}_agent",
                         f"/-- Preuve proposée par un agent pour {step.id} (niveau 2). -/\n"
                         f"theorem {step.id}_agent {bsrc} :\n    {f.claim} := by\n{body}\n")
             if f.agent_refutation:
-                body = "\n".join("  " + ln for ln in f.agent_refutation.strip().splitlines())
+                body = _tactics(f.agent_refutation)
                 stmt = f"¬ (∀ {bsrc}, {f.claim})" if bsrc else f"¬ ({f.claim})"
                 w.block("agent_refutation", step.id, f"{NS}.{step.id}_refutation_agent",
                         f"theorem {step.id}_refutation_agent : {stmt} := by\n{body}\n")
@@ -451,7 +466,7 @@ class LeanGenerator:
                     f"  | {unfold}\n  | (intros; mathocr_core)\n")
             theorems += [f"{NS}.assemblage", f"{NS}.accord_enonce"]
         if self.fm.assemblage_agent:
-            body = "\n".join("  " + ln for ln in self.fm.assemblage_agent.strip().splitlines())
+            body = _tactics(self.fm.assemblage_agent)
             w.block("assembly_agent", None, f"{NS}.assemblage_agent",
                     "/-- Assemblage du raisonnement de l'élève (cas, absurde, témoins…), écrit par un agent à partir\n"
                     "    des seules étapes de la copie ; contrôlé (tactiques et lemmes utilisés). -/\n"
