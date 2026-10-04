@@ -178,3 +178,23 @@ def test_cited_theorem_is_accepted_only_if_used_alone(tmp_path, monkeypatch, pro
     ref, st, fm = _tvi_case(proof)
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     assert lean.steps[0].status == expected, lean.steps[0]
+
+
+@needs_lean
+@pytest.mark.lean
+def test_exercise_context_is_available_to_steps_and_assembly(tmp_path):
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+                                 StepFormal)
+    ref = ReferenceStatement(
+        exercise_id="ctx", statement_latex="Soit f telle que f(x)² = a pour tout x. Montrer que f(0)² = a.",
+        lean_statement="∀ (f : ℝ → ℝ) (a : ℝ), 0 ≤ a → (∀ x, f x ^ 2 = a) → f 0 ^ 2 = a",
+        contexte={"objets": [{"nom": "f", "type": "ℝ → ℝ"}, {"nom": "a", "type": "ℝ"}],
+                  "hypotheses": [{"nom": "h_a", "lean": "0 ≤ a"}, {"nom": "h_eq", "lean": "∀ x, f x ^ 2 = a"}]})
+    st = ProofStructure(scopes=[], pattern={"kind": "direct", "conclusion_step": "s1"}, steps=[
+        ProofStep(id="s1", kind="conclusion", statement="f(0)^2 = a", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop", claim="f 0 ^ 2 = a")])
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    assert lean.steps[0].status == "verifie_elementaire", lean.steps[0]
+    assert lean.assembly_ok and lean.statement_match

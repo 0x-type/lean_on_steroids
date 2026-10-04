@@ -11,5 +11,36 @@
   "Finset"
  ],
  "lean_statement": "∀ (f : ℝ → ℝ) (a : ℝ), Continuous f → 0 ≤ a → (∀ x, f x ^ 2 = a) → ∀ x y, f x = f y",
- "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant",
+ "contexte": {
+  "objets": [
+   {
+    "nom": "f",
+    "type": "ℝ → ℝ",
+    "latex": "f"
+   },
+   {
+    "nom": "a",
+    "type": "ℝ",
+    "latex": "a"
+   }
+  ],
+  "hypotheses": [
+   {
+    "nom": "h_cont",
+    "lean": "Continuous f",
+    "latex": "f est continue sur ℝ"
+   },
+   {
+    "nom": "h_a",
+    "lean": "0 ≤ a",
+    "latex": "a ∈ ℝ⁺"
+   },
+   {
+    "nom": "h_eq",
+    "lean": "∀ x, f x ^ 2 = a",
+    "latex": "∀ x ∈ ℝ, f(x)² = a"
+   }
+  ]
+ }
 }

@@ -623,6 +623,10 @@ NOT_FORMALIZED = {"introduction": "introduction (pas une affirmation)", "annonce
 def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> TranslationResult:
     types = variable_types(ref, st)
     given = exercise_names(ref)
+    # Objets numériques du contexte de l'exercice (a : ℕ…) : déjà déclarés, ni quantifiés ni « inconnus ».
+    ctx_scalars = {o.nom: o.type for o in (ref.contexte.objets if ref.contexte else []) if o.type in TYPES.values()}
+    types.update(ctx_scalars)
+    given = (given | {o.nom for o in (ref.contexte.objets if ref.contexte else [])}) - set(ctx_scalars)
     preds = {m.group(1) for s in st.steps if s.kind == "definition"
              for m in [_DEF_HEAD.search(_clean(s.statement))] if m}
     tr = Translator(types, preds)
@@ -645,7 +649,7 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
                                         def_body=body, sides=sides, origin="code"))
                 continue
             c = tr.claim(s.statement)
-            bound_here = set()
+            bound_here = set(ctx_scalars)
             sc = s.scope
             while sc and sc != "global":
                 bound_here |= set(scope_vars.get(sc, []))

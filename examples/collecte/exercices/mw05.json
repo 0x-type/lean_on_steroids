@@ -10,6 +10,32 @@
  "lean_opens": [
   "Finset"
  ],
- "lean_statement": "∀ (n : ℕ) (f : (Fin n → ℝ) →ₗ[ℝ] (Fin n → ℝ)) (v : Fin n → Fin n → ℝ), ∑ i, (Pi.basisFun ℝ (Fin n)).det (Function.update v i (f (v i))) = LinearMap.trace ℝ (Fin n → ℝ) f * (Pi.basisFun ℝ (Fin n)).det v",
- "validated_by": "proposée par l'assistant, bien typée en Lean mais NON démontrée ; à faire valider par un enseignant"
+ "lean_statement": "∀ (n : ℕ) (f : (Fin n → ℝ) →ₗ[ℝ] (Fin n → ℝ)) (v : Fin n → Fin n → ℝ), 0 < n → ∑ i, (Pi.basisFun ℝ (Fin n)).det (Function.update v i (f (v i))) = LinearMap.trace ℝ (Fin n → ℝ) f * (Pi.basisFun ℝ (Fin n)).det v",
+ "validated_by": "proposée par l'assistant, bien typée en Lean mais NON démontrée ; à faire valider par un enseignant",
+ "contexte": {
+  "objets": [
+   {
+    "nom": "n",
+    "type": "ℕ",
+    "latex": "n = dim E"
+   },
+   {
+    "nom": "f",
+    "type": "(Fin n → ℝ) →ₗ[ℝ] (Fin n → ℝ)",
+    "latex": "f ∈ L(E)"
+   },
+   {
+    "nom": "v",
+    "type": "Fin n → Fin n → ℝ",
+    "latex": "(v_1, …, v_n)"
+   }
+  ],
+  "hypotheses": [
+   {
+    "nom": "h_n",
+    "lean": "0 < n",
+    "latex": "n > 0"
+   }
+  ]
+ }
 }

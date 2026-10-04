@@ -17,6 +17,7 @@ statut de l'étape le signale explicitement.
 from __future__ import annotations
 
 import itertools
+import re
 from dataclasses import dataclass, field
 
 from ..schemas import Binder, Formalization, PolicyViolation, ProofStructure, ReferenceStatement, StepFormal
@@ -88,6 +89,9 @@ class LeanGenerator:
         self.scope_binders = {s.scope_id: s.binders for s in formal.scopes}
         self.scopes = {s.id: s for s in structure.scopes}
         self.defs = [f.def_name for f in formal.steps if f.role == "def" and f.def_name]
+        # Contexte de l'exercice : objets et hypothèses de l'énoncé, ajoutés aux étapes qui s'en servent.
+        self.ctx = ref.contexte.binders() if ref.contexte else []
+        self.ctx_objets = [o.nom for o in ref.contexte.objets] if ref.contexte else []
         self._validate()
 
     # -- validation des fragments ------------------------------------------------
@@ -95,6 +99,14 @@ class LeanGenerator:
     def _validate(self) -> None:
         v = self.violations
         v += check_fragment(self.ref.lean_statement, "énoncé de référence")
+        for n, t in self.ctx:
+            v += check_identifier(n, "contexte de l'énoncé")
+            v += check_fragment(t, "contexte de l'énoncé")
+        if self.ref.contexte:
+            for h in self.ref.contexte.hypotheses:
+                if not h.nom.startswith("h_"):
+                    v.append(PolicyViolation(where="contexte de l'énoncé", token=h.nom,
+                                             detail="une hypothèse de l'énoncé doit être nommée h_…"))
         for sc in self.fm.scopes:
             for b in sc.binders:
                 v += check_identifier(b.name, f"portée {sc.scope_id}")
@@ -174,10 +186,27 @@ class LeanGenerator:
         bind = " ".join([_binders_src(vs)] + hyps).strip()
         return f"∀ {bind}, {claim}" if bind else claim
 
+    def _mentions_ctx(self, lean: str) -> bool:
+        return any(re.search(rf"(?<![\w.']){re.escape(n)}(?![\w'])", lean) for n in self.ctx_objets)
+
+    def _uses_ctx(self, sid: str, _seen: frozenset = frozenset()) -> bool:
+        """L'étape parle-t-elle d'un objet de l'énoncé (directement ou par une dépendance) ?"""
+        if not self.ctx or sid in _seen:
+            return False
+        f = self._formal(sid)
+        if f is None:
+            return False
+        if self._mentions_ctx(" ".join(x for x in (f.claim, f.def_body) if x)):
+            return True
+        step = self.st.step(sid)
+        scoped = [a for sc in self._scope_chain(step.scope) for a in self._assumptions(sc)]
+        return any(self._uses_ctx(u, _seen | {sid}) for u in list(f.uses) + scoped)
+
     def _step_binders(self, sid: str) -> list[tuple[str, str]]:
         step = self.st.step(sid)
         f = self._formal(sid)
-        out = [(b.name, b.type) for b in self._vars(step.scope)]
+        out = list(self.ctx) if self._uses_ctx(sid) else []
+        out += [(b.name, b.type) for b in self._vars(step.scope)]
         for u in (f.uses if f else []):
             uf = self._formal(u)
             if uf is None or uf.role in ("def", "none"):
@@ -202,7 +231,7 @@ class LeanGenerator:
             inner = self.term(sid, step.scope)
             params = " ".join(vs + hs)
             return f"(fun {params} => {inner})" if params else inner
-        args = [b.name for b in self._vars(step.scope)]
+        args = ([n for n, _ in self.ctx] if self._uses_ctx(sid) else []) + [b.name for b in self._vars(step.scope)]
         for u in f.uses:
             uf = self._formal(u)
             if uf is None or uf.role in ("def", "none"):
@@ -347,7 +376,8 @@ class LeanGenerator:
                 w.block("agent_refutation", step.id, f"{NS}.{step.id}_refutation_agent",
                         f"theorem {step.id}_refutation_agent : {stmt} := by\n{body}\n")
             if probes and f.uses and not step.implicit:
-                vb = " ".join(f"({n} : {t})" for n, t in binders if not n.startswith("h_"))
+                deps = {f"h_{u}" for u in f.uses}  # les hypothèses de l'énoncé restent disponibles
+                vb = " ".join(f"({n} : {t})" for n, t in binders if n not in deps)
                 w.block("sans_dep", step.id, f"{NS}.{step.id}_sans_dependances",
                         f"theorem {step.id}_sans_dependances {vb} :\n    {f.claim} := {self._elementary_proof()}\n")
             if probes and not (step.implicit and step.implicit_reason == "schema_recurrence"):
@@ -367,6 +397,11 @@ class LeanGenerator:
             body = self.term(concl, cstep.scope)
             if vs:
                 body = f"fun {' '.join(b.name for b in vs)} => {body}"
+            if self.ctx:
+                # La conclusion vaut pour tout objet de l'énoncé vérifiant ses hypothèses : même forme que
+                # l'énoncé de référence (∀ objets, hypothèses → but).
+                stmt = f"∀ {' '.join(f'({n} : {t})' for n, t in self.ctx)}, {stmt}"
+                body = f"fun {' '.join(n for n, _ in self.ctx)} => {body}"
             w.block("assembly", concl, f"{NS}.assemblage",
                     f"/-- Assemblage des étapes de la copie (composition des théorèmes ci-dessus). -/\n"
                     f"theorem assemblage : {stmt} :=\n  {body}\n")

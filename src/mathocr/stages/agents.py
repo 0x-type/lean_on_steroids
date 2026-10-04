@@ -228,7 +228,8 @@ def _formalize_llm(ref: ReferenceStatement, st: ProofStructure, cfg, *, only: di
         for s in st.steps)
     scopes = "; ".join(f"{sc.id} (variables {sc.variables}, hypothèses {sc.assumptions})" for sc in st.scopes)
     task = prompts.FORMALIZE_TASK.format(statement=ref.statement_latex, lean_statement=ref.lean_statement,
-                                         opens=", ".join(ref.lean_opens), steps=steps, scopes=scopes)
+                                         contexte=_contexte(ref), opens=", ".join(ref.lean_opens), steps=steps,
+                                         scopes=scopes)
     if only and done:
         ctx = "\n".join(f"- {f.step_id} : " + (f"def {f.def_name} := {f.def_body}" if f.role == "def"
                                                  else (f.claim or f"(non formalisée : {f.not_formalized_reason})"))
@@ -337,6 +338,14 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
     return fm
 
 
+def _contexte(ref: ReferenceStatement) -> str:
+    if not ref.contexte:
+        return "(aucun)"
+    return ref.contexte.decrire() + " — soit : " + " ; ".join(
+        [f"{o.nom} = {o.latex}" for o in ref.contexte.objets if o.latex]
+        + [f"{h.nom} : {h.latex}" for h in ref.contexte.hypotheses if h.latex])
+
+
 def _cite_hint(f: StepFormal) -> str:
     """Consigne de niveau 2 quand l'élève a cité un théorème : s'appuyer dessus, et sur rien d'autre."""
     if not f.cites:
@@ -404,6 +413,8 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
                      + f" := {f.def_body}" for f in fm.steps if f.role == "def") or "(aucune)"
     todo = [f for f in fm.steps if f.role in ("prop", "hyp") and f.claim and f.step_id not in skip]
     claims = "\n".join(f"- {f.step_id} : {f.claim}" for f in todo)
+    if ref is not None and ref.contexte:
+        defs = f"Objets et hypothèses de l'énoncé : {ref.contexte.decrire()}\n{defs}"
     back = eng.structured(prompts.BACKTRANSLATE_SYSTEM, prompts.BACKTRANSLATE_TASK.format(defs=defs, claims=claims),
                           [], WireBacks)
     bmap = {b.step_id: b.latex for b in back.items}
@@ -418,7 +429,10 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
         return written if written and not step.implicit else f"(étape implicite) {step.statement}"
     pairs = "\n".join(f"- {f.step_id} : copie « {excerpt(f.step_id)} » / reformulation « {st.step(f.step_id).statement} »"
                       f" / relecture « {bmap.get(f.step_id, '?')} »" for f in todo)
-    cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(pairs=pairs, statement=ref.statement_latex if ref else "(non fourni)"), [], WireCmps)
+    cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(
+        pairs=pairs, statement=ref.statement_latex if ref else "(non fourni)",
+        contexte=(", ".join(f"{h.latex or h.lean}" for h in ref.contexte.hypotheses) + " ; objets : "
+                  + ", ".join(o.latex or o.nom for o in ref.contexte.objets)) if ref and ref.contexte else "(aucun)"), [], WireCmps)
     out = []
     for c in cmp_.items:
         out.append(FidelityCheck(step_id=c.step_id, kind="retrotraduction", ok=c.equivalent,

@@ -9,6 +9,37 @@
  "lean_opens": [
   "Finset"
  ],
- "lean_statement": "∀ a b : ℕ, Nat.Coprime a b → ∑ d ∈ (a * b).divisors, d = (∑ d ∈ a.divisors, d) * (∑ d ∈ b.divisors, d)",
- "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant"
+ "lean_statement": "∀ a b : ℕ, 0 < a → 0 < b → Nat.Coprime a b → ∑ d ∈ (a * b).divisors, d = (∑ d ∈ a.divisors, d) * (∑ d ∈ b.divisors, d)",
+ "validated_by": "proposée par l'assistant, démontrée en Lean (axiomes standard) ; à faire valider par un enseignant",
+ "contexte": {
+  "objets": [
+   {
+    "nom": "a",
+    "type": "ℕ",
+    "latex": "a"
+   },
+   {
+    "nom": "b",
+    "type": "ℕ",
+    "latex": "b"
+   }
+  ],
+  "hypotheses": [
+   {
+    "nom": "h_a",
+    "lean": "0 < a",
+    "latex": "a ∈ ℕ*"
+   },
+   {
+    "nom": "h_b",
+    "lean": "0 < b",
+    "latex": "b ∈ ℕ*"
+   },
+   {
+    "nom": "h_copr",
+    "lean": "Nat.Coprime a b",
+    "latex": "a et b premiers entre eux"
+   }
+  ]
+ }
 }

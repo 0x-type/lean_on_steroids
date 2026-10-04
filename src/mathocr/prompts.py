@@ -92,6 +92,8 @@ automatique compare numériquement tes énoncés au LaTeX de la copie ; toute «
 
 FORMALIZE_TASK = """Énoncé de l'exercice : {statement}
 Formalisation de référence de l'énoncé (validée) : `{lean_statement}`
+Contexte de l'énoncé, DÉJÀ DÉCLARÉ pour chaque étape (utilise ces noms tels quels, ne les re-quantifie pas, \
+ne les redéfinis pas) : {contexte}
 Espaces ouverts : {opens}
 
 Étapes de la copie (structure) :
@@ -99,6 +101,8 @@ Espaces ouverts : {opens}
 
 Portées : {scopes}
 
+Aucune variable libre : toute lettre de `claim` est soit un objet du contexte, soit une variable de la \
+portée, soit quantifiée dans `claim`.
 Pour chaque étape, produis `role` :
 - `def` pour une définition de l'élève (ex. P) : `def_name`, `def_binders`, `def_body` (terme Prop).
 - `hyp` pour une hypothèse de portée (« supposons P(n) ») : `claim`.
@@ -154,6 +158,8 @@ dépliée sont équivalentes."""
 
 COMPARE_TASK = """Énoncé de l'exercice (contexte : objets et notations de l'exercice ; « le résultat » désigne \
 l'énoncé) : {statement}
+Objets et hypothèses de l'énoncé, connus de toutes les étapes : {contexte}. Une relecture qui les utilise, \
+les suppose ou les mentionne en tête n'ajoute rien à la copie : ce n'est pas une différence.
 
 Pour chaque étape : `copie` = passage écrit par l'élève (il fait foi) ; `reformulation` = \
 la même étape récrite par un autre agent (aide à lire la copie : contexte d'une chaîne, notation définie plus \

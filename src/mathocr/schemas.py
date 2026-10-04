@@ -35,6 +35,34 @@ class ReferenceStatement(BaseModel):
     # Proposition Lean (terme de type Prop) qui formalise l'énoncé.
     lean_statement: str
     validated_by: str | None = None
+    # Contexte de l'exercice (« Soit f continue telle que … ») : objets et hypothèses fixés par l'énoncé,
+    # écrits une fois par exercice et validés avec lui. Chaque étape peut s'en servir sans les redéclarer ;
+    # l'énoncé de référence doit être de la forme ∀ objets, hypothèses → but (même ordre).
+    contexte: "Contexte | None" = None
+
+
+class ObjetContexte(BaseModel):
+    nom: str  # identifiant Lean, ex. « f »
+    type: str  # type Lean, ex. « ℝ → ℝ »
+    latex: str = ""  # tel qu'écrit dans l'énoncé, ex. « f »
+
+
+class HypotheseContexte(BaseModel):
+    nom: str  # identifiant Lean commençant par h_, ex. « h_cont »
+    lean: str  # proposition Lean, ex. « Continuous f »
+    latex: str = ""  # ex. « f est continue sur ℝ »
+
+
+class Contexte(BaseModel):
+    objets: list[ObjetContexte] = Field(default_factory=list)
+    hypotheses: list[HypotheseContexte] = Field(default_factory=list)
+
+    def binders(self) -> list[tuple[str, str]]:
+        return [(o.nom, o.type) for o in self.objets] + [(h.nom, h.lean) for h in self.hypotheses]
+
+    def decrire(self) -> str:
+        """Pour les consignes des agents : « (f : ℝ → ℝ) (a : ℝ) (h_cont : Continuous f) … »."""
+        return " ".join(f"({n} : {t})" for n, t in self.binders())
 
 
 class PageImage(BaseModel):
@@ -414,3 +442,6 @@ class CostReport(BaseModel):
 
 
 RunResult.model_rebuild()
+
+
+ReferenceStatement.model_rebuild()
