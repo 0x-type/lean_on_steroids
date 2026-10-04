@@ -174,3 +174,13 @@ def test_tier2_slow_attempt_is_abandoned(monkeypatch):
     t0 = _t.monotonic()
     out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="x", tier2_timeout_s=0.2))
     assert _t.monotonic() - t0 < 0.8 and out.of("s1").agent_proof is None
+
+
+def test_reading_doubt_reaches_next_chain_link():
+    from mathocr.schemas import ProofStep, ProofStructure as PS, SourceRef
+    from mathocr.stages.fidelity import _chain_successors
+    mk = lambda i, stmt, line: ProofStep(id=i, kind="calcul", statement=stmt, source=[SourceRef(line_id=line, excerpt="x")])
+    st = PS(steps=[mk("s6", r"A = (n+1)(\frac{n}{2}+2)", "L08"), mk("s7", r"(n+1)(\frac{n}{2}+2) = B", "L09"),
+                   mk("s8", "B = C", "L10")], scopes=[], pattern={"kind": "aucun"})
+    # le doute sur la ligne L08 touche s6, donc s7 (qui reprend son membre) ; pas s8 (membre lu en L09)
+    assert [s.id for s in _chain_successors(st, [st.steps[0]])] == ["s7"]

@@ -320,6 +320,23 @@ def _retranslate(ref, st: ProofStructure, sid: str, u: Uncertainty, alt: str) ->
     return f.claim or f.def_body if f else None
 
 
+def _chain_successors(st: ProofStructure, affected: list) -> list:
+    """Maillons suivants d'une chaîne qui reprennent, comme membre de gauche, le membre de droite d'une
+    étape touchée par un doute : écrits sur une autre ligne, ils dépendent pourtant de la même lecture.
+    Un seul pas : le maillon d'après reprend un membre lu ailleurs, sans le doute."""
+    out, seen = [], {s.id for s in affected}
+    for a in affected:
+        if a.kind != "calcul" or "=" not in a.statement:
+            continue
+        rhs = norm(a.statement.split("=")[-1])
+        for b in st.steps:
+            if b.id not in seen and b.kind == "calcul" and "=" in b.statement \
+                    and norm(b.statement.split("=")[0]) == rhs:
+                seen.add(b.id)
+                out.append(b)
+    return out
+
+
 def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalization,
                           lean_evals: dict, ref=None) -> list[FidelityCheck]:
     out = []
@@ -328,6 +345,7 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
         affected = [s for s in st.steps
                     if any(r.line_id == u.line_id and (u.chosen in r.excerpt or norm(u.chosen) in norm(r.excerpt))
                            for r in s.source)]
+        affected += _chain_successors(st, affected)
         formal_affected = []
         for s in affected:
             try:
