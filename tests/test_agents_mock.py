@@ -64,6 +64,8 @@ class FakeEngine(Engine):
                 if s.get("predicate_app"):
                     s["predicate_app"] = list(s["predicate_app"])
             return WireFormalization(**{"scopes": fm["scopes"], "steps": fm["steps"]})
+        if schema.__name__ in ("WireBacks", "WireCmps"):  # juge : relit et compare (ici, rien à signaler)
+            return schema(items=[])
         raise AssertionError(schema)
 
 
@@ -213,3 +215,24 @@ def test_unfaithful_translation_is_redone_once_with_the_judge_remark(monkeypatch
     assert s1.claim.startswith("∃ c : ℝ, 0 < c") and s1.agent_proof is None and s1.cites == ["tvi"]
     assert s2.agent_proof == "trivial" and out.assemblage_agent is None
     assert fm.of("s1").agent_proof == "exact ⟨0, rfl⟩"  # l'original n'est pas modifié
+
+
+@needs_lean
+@pytest.mark.lean
+def test_judge_runs_alongside_level2(tmp_path, fake):
+    """Le juge tourne en parallèle du niveau 2 ; son résultat rejoint la fidélité avant le verdict."""
+    cfg = PipelineConfig(workspace=ROOT / "lean_workspace", ocr_engines=["fake:A", "fake:B"],
+                         reasoning_engine="fake:R", judge_engine="fake:J", cache_dir=tmp_path / "cache")
+    r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / "out", cfg)
+    assert r.verdict.verdict == Verdict.verified, r.verdict.blocking_issues
+
+
+def test_profile_m_fills_only_missing_engines():
+    import argparse
+    from mathocr.cli import PROFILS, _apply_profile
+    a = argparse.Namespace(ocr=None, effort_ocr=None, raisonnement="openrouter:x/y", arbitre=None, niveau2=None,
+                           secours=None, assemblage=None, juge=None, effort_juge=None)
+    _apply_profile(a, PROFILS["M"])
+    assert a.raisonnement == "openrouter:x/y"  # donné explicitement : conservé
+    assert a.arbitre.endswith("claude-opus-5.5") and a.secours.endswith("gpt-6-luna-pro") and a.effort_juge == "medium"
+    assert a.ocr == PROFILS["M"]["ocr"] and a.ocr is not PROFILS["M"]["ocr"]

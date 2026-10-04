@@ -58,7 +58,7 @@ class Ledger:
         self.stage = "?"
 
     def add(self, **kw) -> UsageEntry:
-        e = UsageEntry(stage=self.stage, **kw)
+        e = UsageEntry(stage=_stage.get() or self.stage, **kw)
         if e.cached:
             e.cost_usd = 0.0
         elif e.cost_usd is None:  # coût non fourni par le fournisseur (OpenRouter le fournit)
@@ -75,6 +75,8 @@ class Ledger:
 
 
 _current: contextvars.ContextVar[Ledger | None] = contextvars.ContextVar("mathocr_ledger", default=None)
+# Étape en cours, propre à chaque fil d'exécution (le juge tourne en parallèle du niveau 2).
+_stage: contextvars.ContextVar[str | None] = contextvars.ContextVar("mathocr_stage", default=None)
 
 
 @contextlib.contextmanager
@@ -97,3 +99,4 @@ def set_stage(stage: str) -> None:
     led = _current.get()
     if led is not None:
         led.stage = stage
+    _stage.set(stage)

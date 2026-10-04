@@ -447,12 +447,14 @@ class WireCmps(BaseModel):
 
 
 def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
-                  fid: list[FidelityCheck] | None = None, ref: ReferenceStatement | None = None) -> list[FidelityCheck]:
+                  fid: list[FidelityCheck] | None = None, ref: ReferenceStatement | None = None,
+                  only: set[str] | None = None) -> list[FidelityCheck]:
     """Relecture indépendante du Lean. Elle sert à détecter un agent infidèle : les étapes traduites
     par le code ET confirmées par l'empreinte numérique ou le prédicat n'en ont pas besoin."""
     evidence = {"empreinte_numerique", "application_predicat"}
     confirmed = {sid for c in (fid or []) if c.ok and c.kind in evidence for sid in c.step_id.split(",")}
-    skip = {f.step_id for f in fm.steps if f.origin == "code" and f.step_id in confirmed}
+    skip = {f.step_id for f in fm.steps if (f.origin == "code" and f.step_id in confirmed)
+            or (only is not None and f.step_id not in only)}
     if all(f.step_id in skip for f in fm.steps if f.role in ("prop", "hyp") and f.claim):
         return []
     eng = _engine(cfg, cfg.judge_engine)

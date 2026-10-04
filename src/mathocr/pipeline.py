@@ -174,21 +174,23 @@ def _run(
         fid = run_fidelity(tr, st, fm, lean, evals, ref)
         return st, fm, lean, evals, fid
 
-    def tier2(st, fm, lean, evals):
+    def tier2(st, fm, lean, evals, only=None):
         """Niveau 2, une seule fois, sur la lecture définitive : modèle bon marché (Lean contrôle tout),
         puis reprise limitée par le modèle de raisonnement des étapes encore non tranchées."""
         nonlocal lean_seconds
         broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
-        if not (cfg.tier2 and cfg.reasoning_engine) or broken or not any(c.status == "non_verifie" for c in lean.steps):
+        if not (cfg.tier2 and cfg.reasoning_engine) or broken or not any(
+                c.status == "non_verifie" and (only is None or c.step_id in only) for c in lean.steps):
             return fm, lean, evals
         from .stages.agents import tier2_attempts
         set_stage("lean")
         cheap = cfg.tier2_engine or cfg.reasoning_engine
-        fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory, engine=cheap)
+        fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory, engine=cheap, only=only)
         _save(out_dir, "3b_formalisation_niveau2.json", fm)
         lean, evals = verify(ref, st, fm, scfg, out_dir)
         lean_seconds += lean.run.seconds if lean.run else 0.0
-        left = [c.step_id for c in lean.steps if c.status == "non_verifie"][:cfg.tier2_fallback_max]
+        left = [c.step_id for c in lean.steps
+                if c.status == "non_verifie" and (only is None or c.step_id in only)][:cfg.tier2_fallback_max]
         strong = cfg.fallback_engine or cfg.reasoning_engine
         if left and cheap != strong and cfg.tier2_fallback_max > 0:
             fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=strong, only=set(left))
@@ -216,10 +218,29 @@ def _run(
                 st = patched
                 _save(out_dir, "2_structure.json", st)
 
-    def finish(st, fm, lean, evals):
-        """Niveau 2, assemblage par agent, fidélité et relecture indépendante."""
+    def finish(st, fm, lean, evals, only=None, prev_fid=()):
+        """Niveau 2, assemblage par agent, fidélité et relecture indépendante.
+
+        La relecture ne dépend que des énoncés traduits (le niveau 2 et l'assemblage n'y touchent pas) : elle
+        tourne en parallèle. `only` : après une reprise de traduction, seules ces étapes sont retravaillées ;
+        les autres gardent leurs preuves et leur relecture (`prev_fid`)."""
         nonlocal lean_seconds
-        fm, lean, evals = tier2(st, fm, lean, evals)
+        judge = None
+        if cfg.judge_engine:
+            import contextvars
+            from concurrent.futures import ThreadPoolExecutor
+
+            from .stages.agents import backtranslate
+            fid0 = run_fidelity(tr, st, fm, lean, evals, ref)
+
+            def _judge():
+                set_stage("fidélité")
+                return backtranslate(tr, st, fm, cfg, fid=fid0, ref=ref, only=only)
+            pool = ThreadPoolExecutor(max_workers=1)
+            judge = pool.submit(contextvars.copy_context().run, _judge)
+            pool.shutdown(wait=False)
+
+        fm, lean, evals = tier2(st, fm, lean, evals, only=only)
 
         # Raisonnement autre que direct / récurrence (cas, absurde, témoins…) : un agent écrit l'assemblage des
         # étapes de l'élève, que Lean vérifie et que des contrôles empêchent d'ajouter des mathématiques.
@@ -245,10 +266,10 @@ def _run(
             from .stages.fidelity import confirm_alternatives_with_lean
             confirm_alternatives_with_lean(ref, tr, st, fm, lean, fid, scfg)
 
-        if cfg.judge_engine:
-            from .stages.agents import backtranslate
-            set_stage("fidélité")
-            fid += backtranslate(tr, st, fm, cfg, fid=fid, ref=ref)
+        if judge is not None:
+            fid += judge.result()
+            if only is not None:
+                fid += [c for c in prev_fid if c.kind == "retrotraduction" and c.step_id not in only]
         return fm, lean, evals, fid
 
     fm, lean, evals, fid = finish(st, fm, lean, evals)
@@ -267,7 +288,7 @@ def _run(
             lean, evals = verify(ref, st, fm, scfg, out_dir)
             lean_seconds += lean.run.seconds if lean.run else 0.0
             _save(out_dir, "4_lean.json", lean)
-            fm, lean, evals, fid = finish(st, fm, lean, evals)
+            fm, lean, evals, fid = finish(st, fm, lean, evals, only=set(changed), prev_fid=fid)
     (out_dir / "5_fidelite.json").write_text(json.dumps([c.model_dump() for c in fid], ensure_ascii=False, indent=1),
                                              encoding="utf-8")
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)

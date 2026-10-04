@@ -51,11 +51,30 @@ def _cfg(a) -> PipelineConfig:
                           lean_memory_mb=a.memoire, ocr_engines=a.ocr or [], reasoning_engine=a.raisonnement,
                           arbiter_engine=getattr(a, "arbitre", None),
                           fallback_engine=getattr(a, "secours", None), assembly_engine=getattr(a, "assemblage", None),
-                          judge_effort=getattr(a, "effort_juge", "high"),
+                          judge_effort=getattr(a, "effort_juge", None) or "high",
                           judge_engine=a.juge, tier2=not a.sans_niveau2, polish_feedback=a.reformuler,
                           cache_dir=Path(a.cache), ocr_mode=a.mode_ocr, ocr_strong=a.ocr_fort or [],
-                          audit_rate=a.audit, ocr_effort=a.effort_ocr, tier2_engine=getattr(a, "niveau2", None),
+                          audit_rate=a.audit, ocr_effort=a.effort_ocr or "high", tier2_engine=getattr(a, "niveau2", None),
                           tolerance=getattr(a, "tolerance", "tolerant"))
+
+
+# Profils de modèles. M (retenu après essais, 4 oct. 2026) : Opus là où la qualité décide du verdict (lecture,
+# arbitrage, structure, formalisation) ; modèles bon marché là où Lean contrôle tout (niveau 2, reprise,
+# assemblage) ; juge d'un autre fournisseur, effort moyen.
+_O = "openrouter:anthropic/claude-opus-5.5"
+PROFILS = {
+    "M": {"ocr": ["openrouter:google/gemini-3.8-flash", _O], "effort_ocr": "low", "raisonnement": _O, "arbitre": _O,
+          "niveau2": "openrouter:openai/gpt-6-luna", "secours": "openrouter:openai/gpt-6-luna-pro",
+          "assemblage": "openrouter:openai/gpt-6-luna-pro", "juge": "openrouter:google/gemini-3.1-pro-preview",
+          "effort_juge": "medium"},
+}
+
+
+def _apply_profile(a, prof: dict) -> None:
+    """Complète les moteurs non donnés sur la ligne de commande."""
+    for k, v in prof.items():
+        if not getattr(a, k, None):
+            setattr(a, k, list(v) if isinstance(v, list) else v)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--raisonnement", help="moteur des agents (structure, formalisation, arbitrage, niveau 2)")
         p.add_argument("--secours", help="moteur de reprise du niveau 2 ; défaut : --raisonnement")
         p.add_argument("--assemblage", help="moteur d'assemblage du raisonnement ; défaut : --raisonnement")
-        p.add_argument("--effort-juge", default="high", choices=["low", "medium", "high"])
+        p.add_argument("--effort-juge", default=None, choices=["low", "medium", "high"])
         p.add_argument("--arbitre", help="moteur d'arbitrage des lectures douteuses (image) ; défaut : --raisonnement")
         p.add_argument("--juge", help="moteur de rétro-traduction (de préférence un autre fournisseur)")
         p.add_argument("--sans-niveau2", action="store_true")
@@ -85,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="cascade : --ocr lisent la page, seules les lignes disputées vont à --ocr-fort")
         p.add_argument("--ocr-fort", action="append", help="moteur(s) de relecture des lignes disputées (cascade)")
         p.add_argument("--audit", type=float, default=0.0, help="part des lignes d'accord relues quand même (0-1)")
-        p.add_argument("--effort-ocr", default="high", choices=["low", "medium", "high"],
+        p.add_argument("--effort-ocr", default=None, choices=["low", "medium", "high"],
                        help="effort de raisonnement des lecteurs (coût vs précision)")
         p.add_argument("-v", "--verbose", action="store_true")
 
@@ -97,6 +116,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--structure", type=Path)
     c.add_argument("--formalisation", type=Path)
     c.add_argument("--json", action="store_true", help="afficher le résultat complet en JSON")
+    c.add_argument("--profil", default="M", choices=sorted(PROFILS) + ["aucun"],
+                   help="modèles par défaut (OpenRouter) ; tout moteur donné explicitement l'emporte ; "
+                        "« aucun » : rien que ce qui est donné (mode hors-ligne avec fixtures)")
     common(c)
 
     ev = sub.add_parser("evaluer", help="mesurer la qualité de lecture d'une configuration OCR sur un jeu de copies")
@@ -132,6 +154,8 @@ def main(argv: list[str] | None = None) -> int:
         a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False
         a.mode_ocr, a.ocr_fort, a.audit, a.effort_ocr = "ensemble", [], 0.0, "high"
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(levelname)s %(message)s")
+    if a.cmd == "corriger" and a.profil != "aucun":
+        _apply_profile(a, PROFILS[a.profil])
     cfg = _cfg(a)
 
     if a.cmd == "evaluer":
