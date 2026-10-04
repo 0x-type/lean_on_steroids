@@ -63,3 +63,11 @@ def test_citation_ancree_dans_la_copie(cat, monkeypatch):
     out = theoremes.citations_ancrees(st, tr, cat)
     assert out["s1"] == ["tvi"]  # citée sur la ligne juste avant
     assert "rolle" not in out.get("s2", [])
+
+
+def test_pluriels_ignores_sigles_respectes(cat):
+    from mathocr.theoremes import Theoreme
+    cat.theoremes["fact"] = Theoreme(cle="fact", nom="décomposition", alias=["produit de facteurs premiers"],
+                                     lemmes=["x"], verifie=True)
+    assert reperer("se décompose en un produit de facteur premiers", cat) == ["fact"]
+    assert reperer("on applique TVA", cat) == []

@@ -69,7 +69,10 @@ def _plat(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c)).lower()
     s = re.sub(r"\\[a-z]+\{([^}]*)\}", r"\1", s)  # \text{TVI} -> TVI
-    return " " + re.sub(r"[^a-z0-9]+", " ", s).strip() + " "
+    mots = re.sub(r"[^a-z0-9]+", " ", s).split()
+    # Pluriels et accords ignorés (« facteur premiers » ~ « facteurs premiers »), pas les sigles (TVA ≠ TVI).
+    mots = [m[:-1] if len(m) > 3 and m.endswith("s") else m for m in mots]
+    return " " + " ".join(mots) + " "
 
 
 def reperer(texte: str, cat: Catalogue | None = None) -> list[str]:

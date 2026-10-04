@@ -1,67 +1,281 @@
 {
  "description": "Théorèmes que l'élève peut citer pour justifier une étape. Chaque entrée relie les noms usuels (français) aux lemmes Mathlib correspondants. Une étape est acceptée comme justifiée si l'élève a écrit le nom du théorème et si Lean la démontre en n'utilisant, comme théorème non élémentaire, que ces lemmes et leurs compagnons. « verifie » est écrit par scripts/verifier_catalogue.py : seules les entrées vérifiées par Lean sont utilisées.",
- "modules_avances": ["Mathlib.Topology", "Mathlib.Analysis", "Mathlib.NumberTheory", "Mathlib.LinearAlgebra", "Mathlib.RingTheory", "Mathlib.GroupTheory", "Mathlib.FieldTheory", "Mathlib.MeasureTheory", "Mathlib.Probability", "Mathlib.Combinatorics", "Mathlib.Geometry", "Mathlib.SetTheory", "Mathlib.Dynamics", "Mathlib.Order.Filter", "Mathlib.Data.Nat.Factorization", "Mathlib.Algebra.EuclideanDomain", "Mathlib.Algebra.Field.GeomSum"],
- "elementaires_avances": ["Real.sq_sqrt", "Real.sqrt_sq", "Real.sqrt_nonneg", "Real.sqrt_pos", "Real.sqrt_eq_zero", "Real.sqrt_eq_zero'", "Real.sqrt_lt_sqrt", "Real.sqrt_le_sqrt", "Real.mul_self_sqrt", "Real.sqrt_mul_self", "Real.sqrt_zero", "Real.sqrt_one", "Continuous.continuousOn", "continuous_const", "continuous_id", "Set.mem_Icc", "Set.mem_Ioo", "Set.mem_Ico", "Set.mem_Ioc"],
+ "modules_avances": [
+  "Mathlib.Topology",
+  "Mathlib.Analysis",
+  "Mathlib.NumberTheory",
+  "Mathlib.LinearAlgebra",
+  "Mathlib.RingTheory",
+  "Mathlib.GroupTheory",
+  "Mathlib.FieldTheory",
+  "Mathlib.MeasureTheory",
+  "Mathlib.Probability",
+  "Mathlib.Combinatorics",
+  "Mathlib.Geometry",
+  "Mathlib.SetTheory",
+  "Mathlib.Dynamics",
+  "Mathlib.Order.Filter",
+  "Mathlib.Data.Nat.Factorization",
+  "Mathlib.Algebra.EuclideanDomain",
+  "Mathlib.Algebra.Field.GeomSum"
+ ],
+ "elementaires_avances": [
+  "Real.sq_sqrt",
+  "Real.sqrt_sq",
+  "Real.sqrt_nonneg",
+  "Real.sqrt_pos",
+  "Real.sqrt_eq_zero",
+  "Real.sqrt_eq_zero'",
+  "Real.sqrt_lt_sqrt",
+  "Real.sqrt_le_sqrt",
+  "Real.mul_self_sqrt",
+  "Real.sqrt_mul_self",
+  "Real.sqrt_zero",
+  "Real.sqrt_one",
+  "Continuous.continuousOn",
+  "continuous_const",
+  "continuous_id",
+  "Set.mem_Icc",
+  "Set.mem_Ioo",
+  "Set.mem_Ico",
+  "Set.mem_Ioc"
+ ],
  "theoremes": [
-  {"cle": "tvi", "nom": "théorème des valeurs intermédiaires",
-   "alias": ["TVI", "T.V.I", "théorème des valeurs intermédiaires", "valeurs intermédiaires", "Bolzano"],
-   "lemmes": ["intermediate_value_Icc", "intermediate_value_Icc'", "intermediate_value_univ", "intermediate_value_uIcc", "intermediate_value_Ioo", "intermediate_value_Ioo'", "IsPreconnected.intermediate_value"],
-   "compagnons": ["ordered_connected_space", "isPreconnected_Icc", "Continuous.continuousOn"],
-   "imports": ["Mathlib.Topology.Order.IntermediateValue"]},
-  {"cle": "rolle", "nom": "théorème de Rolle",
-   "alias": ["Rolle", "théorème de Rolle"],
-   "lemmes": ["exists_deriv_eq_zero", "exists_hasDerivAt_eq_zero", "exists_deriv_eq_zero'"],
+  {
+   "cle": "tvi",
+   "nom": "théorème des valeurs intermédiaires",
+   "alias": [
+    "TVI",
+    "T.V.I",
+    "théorème des valeurs intermédiaires",
+    "valeurs intermédiaires",
+    "Bolzano"
+   ],
+   "lemmes": [
+    "intermediate_value_Icc",
+    "intermediate_value_Icc'",
+    "intermediate_value_univ",
+    "intermediate_value_uIcc",
+    "intermediate_value_Ioo",
+    "intermediate_value_Ioo'",
+    "IsPreconnected.intermediate_value"
+   ],
+   "compagnons": [
+    "ordered_connected_space",
+    "isPreconnected_Icc",
+    "Continuous.continuousOn"
+   ],
+   "imports": [
+    "Mathlib.Topology.Order.IntermediateValue"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "rolle",
+   "nom": "théorème de Rolle",
+   "alias": [
+    "Rolle",
+    "théorème de Rolle"
+   ],
+   "lemmes": [
+    "exists_deriv_eq_zero",
+    "exists_hasDerivAt_eq_zero",
+    "exists_deriv_eq_zero'"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Analysis.Calculus.LocalExtr.Rolle"]},
-  {"cle": "taf", "nom": "théorème des accroissements finis",
-   "alias": ["TAF", "T.A.F", "accroissements finis", "théorème des accroissements finis", "égalité des accroissements finis"],
-   "lemmes": ["exists_deriv_eq_slope", "exists_hasDerivAt_eq_slope", "exists_ratio_deriv_eq_ratio_slope"],
+   "imports": [
+    "Mathlib.Analysis.Calculus.LocalExtr.Rolle"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "taf",
+   "nom": "théorème des accroissements finis",
+   "alias": [
+    "TAF",
+    "T.A.F",
+    "accroissements finis",
+    "théorème des accroissements finis",
+    "égalité des accroissements finis"
+   ],
+   "lemmes": [
+    "exists_deriv_eq_slope",
+    "exists_hasDerivAt_eq_slope",
+    "exists_ratio_deriv_eq_ratio_slope"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Analysis.Calculus.Deriv.MeanValue"]},
-  {"cle": "convergence_monotone", "nom": "théorème de la limite monotone",
-   "alias": ["limite monotone", "croissante et majorée", "croissante majorée", "décroissante et minorée", "décroissante minorée", "convergence monotone"],
-   "lemmes": ["tendsto_atTop_ciSup", "tendsto_atTop_ciInf", "tendsto_atTop_isLUB", "tendsto_atTop_isGLB"],
+   "imports": [
+    "Mathlib.Analysis.Calculus.Deriv.MeanValue"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "convergence_monotone",
+   "nom": "théorème de la limite monotone",
+   "alias": [
+    "limite monotone",
+    "croissante et majorée",
+    "croissante majorée",
+    "décroissante et minorée",
+    "décroissante minorée",
+    "convergence monotone"
+   ],
+   "lemmes": [
+    "tendsto_atTop_ciSup",
+    "tendsto_atTop_ciInf",
+    "tendsto_atTop_isLUB",
+    "tendsto_atTop_isGLB"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Topology.Order.MonotoneConvergence"]},
-  {"cle": "gendarmes", "nom": "théorème des gendarmes",
-   "alias": ["gendarmes", "théorème des gendarmes", "encadrement"],
-   "lemmes": ["tendsto_of_tendsto_of_tendsto_of_le_of_le", "tendsto_of_tendsto_of_tendsto_of_le_of_le'"],
+   "imports": [
+    "Mathlib.Topology.Order.MonotoneConvergence"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "gendarmes",
+   "nom": "théorème des gendarmes",
+   "alias": [
+    "gendarmes",
+    "théorème des gendarmes",
+    "encadrement"
+   ],
+   "lemmes": [
+    "tendsto_of_tendsto_of_tendsto_of_le_of_le",
+    "tendsto_of_tendsto_of_tendsto_of_le_of_le'"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Topology.Order.Basic"]},
-  {"cle": "bolzano_weierstrass", "nom": "théorème de Bolzano-Weierstrass",
-   "alias": ["Bolzano-Weierstrass", "Bolzano Weierstrass", "Bolzano–Weierstrass"],
-   "lemmes": ["tendsto_subseq_of_bounded", "tendsto_subseq_of_frequently_bounded"],
+   "imports": [
+    "Mathlib.Topology.Order.Basic"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "bolzano_weierstrass",
+   "nom": "théorème de Bolzano-Weierstrass",
+   "alias": [
+    "Bolzano-Weierstrass",
+    "Bolzano Weierstrass",
+    "Bolzano–Weierstrass"
+   ],
+   "lemmes": [
+    "tendsto_subseq_of_bounded",
+    "tendsto_subseq_of_frequently_bounded"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Topology.MetricSpace.Sequences"]},
-  {"cle": "wilson", "nom": "théorème de Wilson",
-   "alias": ["Wilson", "théorème de Wilson"],
-   "lemmes": ["ZMod.wilsons_lemma", "Nat.prime_iff_fac_equiv_neg_one"],
+   "imports": [
+    "Mathlib.Topology.MetricSpace.Sequences"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "wilson",
+   "nom": "théorème de Wilson",
+   "alias": [
+    "Wilson",
+    "théorème de Wilson"
+   ],
+   "lemmes": [
+    "ZMod.wilsons_lemma",
+    "Nat.prime_iff_fac_equiv_neg_one"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.NumberTheory.Wilson"]},
-  {"cle": "fermat", "nom": "petit théorème de Fermat",
-   "alias": ["Fermat", "petit théorème de Fermat"],
-   "lemmes": ["ZMod.pow_card_sub_one_eq_one", "Int.ModEq.pow_card_sub_one_eq_one", "ZMod.pow_card"],
+   "imports": [
+    "Mathlib.NumberTheory.Wilson"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "fermat",
+   "nom": "petit théorème de Fermat",
+   "alias": [
+    "Fermat",
+    "petit théorème de Fermat"
+   ],
+   "lemmes": [
+    "ZMod.pow_card_sub_one_eq_one",
+    "Int.ModEq.pow_card_sub_one_eq_one",
+    "ZMod.pow_card"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.FieldTheory.Finite.Basic"]},
-  {"cle": "bezout", "nom": "théorème de Bézout",
-   "alias": ["Bézout", "Bezout", "théorème de Bézout", "identité de Bézout"],
-   "lemmes": ["Nat.gcd_eq_gcd_ab", "Int.gcd_eq_gcd_ab"],
+   "imports": [
+    "Mathlib.FieldTheory.Finite.Basic"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "bezout",
+   "nom": "théorème de Bézout",
+   "alias": [
+    "Bézout",
+    "Bezout",
+    "théorème de Bézout",
+    "identité de Bézout"
+   ],
+   "lemmes": [
+    "Nat.gcd_eq_gcd_ab",
+    "Int.gcd_eq_gcd_ab"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Algebra.EuclideanDomain.Basic"]},
-  {"cle": "lagrange_groupes", "nom": "théorème de Lagrange (groupes)",
-   "alias": ["Lagrange", "théorème de Lagrange"],
-   "lemmes": ["Subgroup.card_subgroup_dvd_card", "Subgroup.card_dvd_of_le", "orderOf_dvd_card"],
+   "imports": [
+    "Mathlib.Algebra.EuclideanDomain.Basic"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "lagrange_groupes",
+   "nom": "théorème de Lagrange (groupes)",
+   "alias": [
+    "Lagrange",
+    "théorème de Lagrange"
+   ],
+   "lemmes": [
+    "Subgroup.card_subgroup_dvd_card",
+    "Subgroup.card_dvd_of_le"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.GroupTheory.Coset.Card"]},
-  {"cle": "decomposition_premiers", "nom": "décomposition en facteurs premiers",
-   "alias": ["décomposition en facteurs premiers", "facteurs premiers", "théorème fondamental de l'arithmétique", "décompose en un produit de facteurs premiers"],
-   "lemmes": ["Nat.prod_pow_factorization_eq_self", "Nat.factorization_prod_pow_eq_self", "Nat.eq_pow_of_factorization_eq_single"],
+   "imports": [
+    "Mathlib.GroupTheory.Coset.Card"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "decomposition_premiers",
+   "nom": "décomposition en facteurs premiers",
+   "alias": [
+    "décomposition en facteurs premiers",
+    "facteurs premiers",
+    "théorème fondamental de l'arithmétique",
+    "décompose en un produit de facteurs premiers"
+   ],
+   "lemmes": [
+    "Nat.prod_pow_factorization_eq_self",
+    "Nat.factorization_prod_pow_eq_self"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Data.Nat.Factorization.Defs"]},
-  {"cle": "somme_geometrique", "nom": "somme des termes d'une suite géométrique",
-   "alias": ["somme géométrique", "suite géométrique", "somme des termes d'une suite géométrique"],
-   "lemmes": ["geom_sum_eq", "geom_sum_mul", "mul_geom_sum"],
+   "imports": [
+    "Mathlib.Data.Nat.Factorization.Defs"
+   ],
+   "verifie": true
+  },
+  {
+   "cle": "somme_geometrique",
+   "nom": "somme des termes d'une suite géométrique",
+   "alias": [
+    "somme géométrique",
+    "suite géométrique",
+    "somme des termes d'une suite géométrique"
+   ],
+   "lemmes": [
+    "geom_sum_eq",
+    "geom_sum_mul",
+    "mul_geom_sum"
+   ],
    "compagnons": [],
-   "imports": ["Mathlib.Algebra.Field.GeomSum"]}
+   "imports": [
+    "Mathlib.Algebra.Field.GeomSum"
+   ],
+   "verifie": true
+  }
  ]
 }
