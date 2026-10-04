@@ -71,3 +71,36 @@ def test_pluriels_ignores_sigles_respectes(cat):
                                      lemmes=["x"], verifie=True)
     assert reperer("se décompose en un produit de facteur premiers", cat) == ["fact"]
     assert reperer("on applique TVA", cat) == []
+
+
+@pytest.mark.parametrize("a,b,change", [
+    ("singleton", "singlton", False), ("est constante", "n'est pas constante", True),
+    ("croissante", "décroissante", True), ("continue", "continu", False), ("et", "ou", True),
+    ("positive", "positif", False), ("pair", "impair", True), ("majorée", "minorée", True)])
+def test_seuls_les_mots_logiques_bloquent(a, b, change):
+    from mathocr.stages.fidelity import _logic_change, normalize_notation
+    assert _logic_change(a, b) is change
+    assert normalize_notation(r"$A \Rightarrow B$") == normalize_notation(r"$A \implies B$")
+
+
+def test_regle_de_simplification_est_un_fait_de_base(cat):
+    used = [("MultilinearMap.sum_apply", "Mathlib.LinearAlgebra.Multilinear.Basic", True)]
+    assert juger_usages([], used, cat) == (True, "preuve élémentaire")
+    used_named = [("intermediate_value_univ", "Mathlib.Topology.Order.IntermediateValue", True)]
+    assert juger_usages([], used_named, cat)[0] is False  # un théorème du catalogue reste un grand théorème
+
+
+@pytest.mark.parametrize("tolerance,blocks", [("tolerant", False), ("strict", True)])
+def test_justification_elementaire_absente_selon_le_mode(tolerance, blocks):
+    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+                                 StepCheck, StepFormal, Transcription)
+    from mathocr.stages.verdict import decide
+    ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True", validated_by="test")
+    st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
+        ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
+    lean = LeanReport(file="", steps=[StepCheck(step_id="s1", decl="s1", status="verifie_elementaire",
+                                                closed_by="preuve élémentaire proposée au niveau 2 (…)")])
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop", claim="True")])
+    vr = decide(ref, Transcription(pages=[], lines=[]), st, lean, [], fm, tolerance=tolerance)
+    assert any("s1" in b and "saut logique" in b for b in vr.blocking_issues) is blocks
+    assert any("mode tolérant" in r for r in vr.remarks) is (not blocks)

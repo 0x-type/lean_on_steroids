@@ -480,6 +480,9 @@ open Lean Elab Command in
 def mathocrReportUses (n : Name) : CommandElabM Unit := do
   let env ← getEnv
   let uses := mathocrUsedTheorems env n
-  logInfo m!"mathocr:uses {n} {String.intercalate \" \" (uses.toList.map fun (d, m) => s!\"{d}@{m}\")}"
+  -- Les règles de simplification (@[simp]) de la bibliothèque sont des faits de base, pas de grands théorèmes.
+  let simps ← liftTermElabM (Lean.Meta.getSimpTheorems)
+  let tag := fun (d : Name) => if simps.isLemma (.decl d) then "@simp" else ""
+  logInfo m!"mathocr:uses {n} {String.intercalate \" \" (uses.toList.map fun (d, m) => s!\"{d}@{m}{tag d}\")}"
 
 """

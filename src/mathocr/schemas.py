@@ -399,6 +399,8 @@ class Feedback(BaseModel):
     points_forts: list[str] = Field(default_factory=list)
     points_a_corriger: list[str] = Field(default_factory=list)
     conseils_redaction: list[str] = Field(default_factory=list)
+    # Mode tolérant : justifications absentes mais étapes vraies (démontrées par Lean), signalées à l'élève.
+    pour_une_redaction_parfaite: list[str] = Field(default_factory=list)
     note_pour_correcteur: str = ""
     generated_by: str = "gabarit déterministe"
 

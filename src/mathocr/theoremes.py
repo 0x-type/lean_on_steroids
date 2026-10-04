@@ -112,12 +112,16 @@ def citations_ancrees(st, tr, cat: Catalogue | None = None) -> dict[str, list[st
 def juger_usages(cles: list[str], usages: list[tuple[str, str]], cat: Catalogue | None = None) -> tuple[bool, str]:
     """La preuve Lean d'une étape s'appuie-t-elle exactement sur le(s) théorème(s) cité(s) ?
 
-    `usages` : (théorème, module) utilisés directement par la preuve. Retourne (accepté, explication)."""
+    `usages` : (théorème, module[, règle de simplification]) utilisés directement par la preuve. Une règle de
+    simplification de la bibliothèque (@[simp]) est un fait de base, sauf si c'est un théorème du catalogue.
+    Retourne (accepté, explication)."""
     cat = cat or charger()
     cites = [cat.theoremes[k] for k in cles if k in cat.theoremes]
     permis = {lem for t in cites for lem in t.lemmes + t.compagnons} | cat.elementaires_avances
     nommes = cat.lemmes_nommes()
-    gros = sorted({n for n, mod in usages if (cat.avance(mod) or n in nommes) and n not in cat.elementaires_avances})
+    gros = sorted({u[0] for u in usages
+                   if (u[0] in nommes or (cat.avance(u[1]) and not (len(u) > 2 and u[2])))
+                   and u[0] not in cat.elementaires_avances})
     hors = [n for n in gros if n not in permis]
     if hors:
         return False, f"la preuve utilise aussi {', '.join(hors)}, que la copie ne cite pas"

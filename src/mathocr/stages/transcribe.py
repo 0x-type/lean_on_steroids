@@ -127,7 +127,10 @@ def crop_line(im: Image.Image, bbox: tuple[int, int, int, int], margin: float = 
 
 _NORM = [(r"\left", ""), (r"\right", ""), (r"\,", ""), (r"\;", ""), (r"\!", ""), (r"\displaystyle", ""),
          (r"\mathbb{N}", "ℕ"), (r"\N", "ℕ"), (r"\mathbb N", "ℕ"), (r"\cdot", "*"), (r"\times", "*"),
-         (r"\qquad", " "), (r"\quad", " "), (r"\leqslant", r"\leq"), (r"\geqslant", r"\geq"), (r"\le ", r"\leq "), (r"\ge ", r"\geq ")]
+         (r"\qquad", " "), (r"\quad", " "), (r"\leqslant", r"\leq"), (r"\geqslant", r"\geq"), (r"\le ", r"\leq "), (r"\ge ", r"\geq "),
+         # Notations équivalentes d'une même flèche logique
+         (r"\implies", r"\Rightarrow"), (r"\Longrightarrow", r"\Rightarrow"), (r"\iff", r"\Leftrightarrow"),
+         (r"\Longleftrightarrow", r"\Leftrightarrow"), ("⇒", r"\Rightarrow"), ("⇔", r"\Leftrightarrow")]
 _TOKEN = re.compile(r"\\[A-Za-z]+|\\.|[A-Za-zÀ-ÿ]+|\d|\S")
 
 

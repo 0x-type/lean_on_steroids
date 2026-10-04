@@ -140,6 +140,7 @@ def render_html(r: RunResult, out_dir: Path | None = None) -> str:
                f'<p><strong>{e(fb.summary)}</strong></p>'
                + _list("Points forts", fb.points_forts) + _list("À corriger", fb.points_a_corriger)
                + _list("Rédaction", fb.conseils_redaction)
+               + _list("Pour une rédaction parfaite", fb.pour_une_redaction_parfaite)
                + (f'<details><summary>Note pour le correcteur</summary><pre>{e(fb.note_pour_correcteur)}</pre></details>'
                   if fb.note_pour_correcteur else "")
                + f'<div class="sub">Rédigé par : {e(fb.generated_by)}</div></section>')

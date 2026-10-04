@@ -39,6 +39,7 @@ def decide(
     lean: LeanReport,
     fidelity: list[FidelityCheck],
     formal: Formalization,
+    tolerance: str = "tolerant",
 ) -> VerdictReport:
     blocking: list[str] = []
     remarks: list[str] = []
@@ -86,6 +87,8 @@ def decide(
             unverified.append(c)
         elif c.status == "verifie_agent":
             agent_only.append(c)
+        elif c.status == "verifie_elementaire" and _tolerated(c) and tolerance == "strict":
+            agent_only.append(c)  # mode strict : la justification absente reste un saut logique
         elif c.status == "erreur_formalisation":
             formal_errors.append(c)
     for c in formal_errors:
@@ -123,9 +126,9 @@ def decide(
     for c in lean.steps:
         if c.status == "verifie_theoreme":
             remarks.append(f"Étape {c.step_id} justifiée par un {c.closed_by} — vérifié dans Lean.")
-        elif c.status == "verifie_elementaire" and c.closed_by and "niveau 2" in c.closed_by:
-            remarks.append(f"Étape {c.step_id} admise sans justification écrite : Lean la démontre par un "
-                           f"argument élémentaire.")
+        elif c.status == "verifie_elementaire" and _tolerated(c) and tolerance != "strict":
+            remarks.append(f"Étape {c.step_id} admise sans justification écrite (mode tolérant) : Lean la démontre "
+                           f"par un argument élémentaire.")
     for o in st.observations:
         tag = ", ".join(o.step_ids)
         if o.severity in ("lacune", "erreur") and not (o.step_ids and set(o.step_ids) <= lean_ok):
@@ -196,3 +199,8 @@ def decide(
 
     reasons.append("Au moins un point empêche de conclure automatiquement (voir la liste).")
     return VerdictReport(verdict=Verdict.review, reasons=reasons, blocking_issues=blocking, remarks=remarks)
+
+
+def _tolerated(c) -> bool:
+    """Étape vraie, démontrée au niveau 2 sans grand théorème : seule sa justification manque à la copie."""
+    return bool(c.closed_by and "niveau 2" in c.closed_by)

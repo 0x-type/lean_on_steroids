@@ -46,7 +46,7 @@ def _judge_agent_proof(check: StepCheck, cites: list[str], used: list[tuple[str,
     if used is None:  # liste des usages absente : prudence
         return
     ok, why = juger_usages(cites, used)
-    check.uses = [n for n, _ in used]
+    check.uses = [u[0] for u in used]
     if ok and cites:
         check.status = "verifie_theoreme"
         check.closed_by = f"théorème cité par l'élève : {why}"
@@ -87,7 +87,7 @@ def interpret(
     for m in msgs:
         if m.severity == "information" and m.text.startswith("mathocr:uses "):
             parts = m.text.split()
-            uses[parts[1]] = [tuple(x.rsplit("@", 1)) for x in parts[2:] if "@" in x]
+            uses[parts[1]] = [tuple(x.split("@")[:2]) + (x.endswith("@simp"),) for x in parts[2:] if "@" in x]
 
     # Rattacher les messages aux étapes
     for m in msgs:

@@ -268,6 +268,52 @@ def _substitute(text: str, u: Uncertainty, alt: str) -> str:
     return text.replace(u.chosen, alt, 1)
 
 
+# Mots qui portent la logique d'une phrase : une lecture qui en ajoute, en retire ou en change un peut changer
+# l'étape. Les autres différences de texte (orthographe, mot de liaison neutre) n'en changent pas le sens.
+_LOGIC_WORDS = {"non", "pas", "ne", "n", "aucun", "aucune", "et", "ou", "si", "alors", "donc", "tout", "tous",
+                "toute", "toutes", "chaque", "existe", "unique", "seul", "seule", "sauf", "strictement", "large",
+                "croissante", "croissant", "decroissante", "decroissant", "positive", "positif", "negative", "negatif",
+                "nul", "nulle", "inferieur", "superieur", "majoree", "minoree", "bornee", "pair", "paire", "impair",
+                "impaire", "premier", "premiers", "continue", "derivable", "injective", "surjective", "bijective",
+                "constante", "fini", "finie", "infini", "converge", "diverge", "egal", "egale", "different", "vrai",
+                "faux", "fausse", "contradiction", "absurde", "reciproque", "equivalent"}
+
+
+def _mots(s: str) -> list[str]:
+    import unicodedata
+    s = "".join(c for c in unicodedata.normalize("NFKD", s.lower()) if not unicodedata.combining(c))
+    return re.findall(r"[a-z]+", s)
+
+
+def _logic_change(a: str, b: str) -> bool:
+    """Vrai si les deux lectures diffèrent par un mot logique : ajouté, retiré, ou remplacé par un autre mot
+    logique (« croissante » / « décroissante »). Une coquille sur un mot logique (« continue » / « continu »)
+    n'en change pas le sens."""
+    from rapidfuzz import fuzz
+
+    wa, wb = _mots(a), _mots(b)
+    for xs, ys in ((wa, wb), (wb, wa)):
+        for x in xs:
+            if x not in _LOGIC_WORDS or x in ys:
+                continue
+            best = max(ys, key=lambda y: fuzz.ratio(x, y), default=None)
+            if best is None or fuzz.ratio(x, best) < 75:
+                return True
+            if best in _LOGIC_WORDS:
+                # Accord (positif / positive, pair / paire) : même mot ; préfixe de négation
+                # (croissante / décroissante, pair / impair) : sens contraire.
+                negation = best.endswith(x) or x.endswith(best)
+                accord = best[:4] == x[:4]
+                if negation or not accord:
+                    return True
+    return False
+
+
+def normalize_notation(s: str) -> str:
+    from .transcribe import normalize
+    return re.sub(r"[$\s]", "", normalize(s))
+
+
 def _phrase_equivalent(a: str, b: str) -> bool:
     a, b = a.strip().lower(), b.strip().lower()
     if a == b or any(a in grp and b in grp for grp in EQUIVALENT_PHRASES):
@@ -369,9 +415,14 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
                                        for s_, _ in formal_affected):
                 verdicts.append((False, f"« {alt.text} » : texte hors de l'énoncé formalisé (aucun effet sur Lean)"))
                 continue
+            if normalize_notation(u.chosen) == normalize_notation(alt.text):
+                verdicts.append((False, f"« {alt.text} » : même notation"))
+                continue
             if not in_math:
                 if _phrase_equivalent(u.chosen, alt.text):
                     verdicts.append((False, f"« {alt.text} » : même sens mathématique"))
+                elif not _logic_change(u.chosen, alt.text):
+                    verdicts.append((False, f"« {alt.text} » : variante sans effet logique (orthographe, mot neutre)"))
                 elif alt.score < LOW_PROBABILITY and not u.context_dependent:
                     verdicts.append((False, f"« {alt.text} » : lecture peu probable ({alt.score:.2f})"))
                 else:

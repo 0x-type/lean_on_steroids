@@ -51,7 +51,8 @@ def _cfg(a) -> PipelineConfig:
                           lean_memory_mb=a.memoire, ocr_engines=a.ocr or [], reasoning_engine=a.raisonnement,
                           judge_engine=a.juge, tier2=not a.sans_niveau2, polish_feedback=a.reformuler,
                           cache_dir=Path(a.cache), ocr_mode=a.mode_ocr, ocr_strong=a.ocr_fort or [],
-                          audit_rate=a.audit, ocr_effort=a.effort_ocr, tier2_engine=getattr(a, "niveau2", None))
+                          audit_rate=a.audit, ocr_effort=a.effort_ocr, tier2_engine=getattr(a, "niveau2", None),
+                          tolerance=getattr(a, "tolerance", "tolerant"))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--raisonnement", help="moteur des agents (structure, formalisation, arbitrage, niveau 2)")
         p.add_argument("--juge", help="moteur de rétro-traduction (de préférence un autre fournisseur)")
         p.add_argument("--sans-niveau2", action="store_true")
+        p.add_argument("--tolerance", default="tolerant", choices=["tolerant", "strict"],
+                       help="tolerant : une justification élémentaire absente (étape vraie) n'empêche pas « vérifié »")
         p.add_argument("--niveau2", help="moteur des preuves de niveau 2 (Lean les contrôle : un modèle bon marché "
                                          "suffit) ; les étapes non tranchées sont retentées par --raisonnement")
         p.add_argument("--reformuler", action="store_true", help="faire reformuler le retour par l'agent")

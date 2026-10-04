@@ -63,9 +63,24 @@ def build_feedback(tr: Transcription, st: ProofStructure, lean: LeanReport, vr: 
                 style.append(f"« {s.connective} {_say(s.statement)} » : ce résultat ne découle pas de ce qui précède ; "
                              f"utilise « et » plutôt que « {s.connective} ».")
 
+    # Mode tolérant : ce que la copie admet sans le justifier, alors que Lean l'a démontré.
+    perfect = []
+    for c in lean.steps:
+        s = next((x for x in st.steps if x.id == c.step_id), None)
+        if s is None:
+            continue
+        if c.status == "verifie_elementaire" and c.closed_by and "niveau 2" in c.closed_by:
+            perfect.append(f"{_lines(s).capitalize()} : {_say(s.statement)} est vrai, mais tu ne le justifies pas. "
+                           f"Ajoute l'argument (un calcul ou une propriété élémentaire suffit).")
+        elif c.status == "verifie_theoreme":
+            strong.append(f"{_lines(s).capitalize()} : bon usage du théorème cité ({c.closed_by.split(' : ', 1)[-1]}).")
+
     if vr.verdict == Verdict.verified:
         summary = "Démonstration correcte et complète : chaque étape a été vérifiée."
-        if style:
+        if perfect:
+            summary = ("Raisonnement vérifié. Quelques justifications manquent : ta démonstration est juste, "
+                       "mais une rédaction parfaite les préciserait (voir ci-dessous).")
+        elif style:
             summary += " Quelques points de rédaction à soigner."
     elif vr.verdict == Verdict.error:
         summary = "La démonstration contient une erreur mathématique (voir ci-dessous)."
@@ -85,7 +100,8 @@ def build_feedback(tr: Transcription, st: ProofStructure, lean: LeanReport, vr: 
         examples = ", ".join(f"« {u.chosen} » pouvait se lire « {u.readings[1].text} »" for u in hard[:3])
         style.append(f"Plusieurs symboles sont ambigus à la lecture ({examples}) : soigne leur tracé.")
     return Feedback(summary=summary, points_forts=strong, points_a_corriger=fix,
-                    conseils_redaction=style, note_pour_correcteur=note)
+                    conseils_redaction=style, note_pour_correcteur=note,
+                    pour_une_redaction_parfaite=perfect if vr.verdict == Verdict.verified else [])
 
 
 def _lines(step) -> str:

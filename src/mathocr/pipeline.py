@@ -66,6 +66,10 @@ class PipelineConfig:
     tier2_parallel: int = 8  # appels de niveau 2 simultanés
     tier2_timeout_s: float | None = 90.0  # au-delà, la tentative est abandonnée
     polish_feedback: bool = False
+    # « tolerant » : une étape vraie dont la justification est un calcul élémentaire (démontrée par Lean au
+    # niveau 2, sans grand théorème) n'empêche pas « raisonnement vérifié » ; elle est signalée à l'élève.
+    # « strict » : toute justification absente est un saut logique.
+    tolerance: str = "tolerant"
 
 
 def _load(path: Path | None, model):
@@ -222,7 +226,7 @@ def _run(
         _remember(memory, st, fm, lean, fid)
 
     set_stage("retour")
-    vr = decide(ref, tr, st, lean, fid, fm)
+    vr = decide(ref, tr, st, lean, fid, fm, tolerance=cfg.tolerance)
     fb = build_feedback(tr, st, lean, vr)
     if cfg.polish_feedback and cfg.reasoning_engine:
         from .stages.agents import polish_feedback
