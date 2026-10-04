@@ -214,7 +214,7 @@ class Scope(BaseModel):
 
 
 class ProofPattern(BaseModel):
-    kind: Literal["direct", "recurrence_simple", "aucun"]
+    kind: Literal["direct", "recurrence_simple", "libre", "aucun"]  # libre : cas, absurde, témoins… (assemblage par agent)
     base_step: str | None = None
     heredity_scope: str | None = None
     heredity_step: str | None = None
@@ -303,6 +303,11 @@ class ScopeFormal(BaseModel):
 class Formalization(BaseModel):
     scopes: list[ScopeFormal]
     steps: list[StepFormal]
+    # Assemblage écrit par un agent pour les raisonnements autres que direct / récurrence : preuve Lean de
+    # l'énoncé de référence qui n'utilise que les étapes de l'élève (déjà vérifiées), le kit, le contexte
+    # et de la logique (cas, absurde, témoins). Contrôlé : aucune tactique ni aucun lemme qui ajouterait
+    # des mathématiques absentes de la copie.
+    assemblage_agent: str | None = None
     provenance: str = ""
 
     def of(self, sid: str) -> StepFormal:
@@ -372,6 +377,8 @@ class LeanReport(BaseModel):
     steps: list[StepCheck] = Field(default_factory=list)
     assembly_ok: bool = False
     statement_match: bool = False  # la conclusion de l'élève implique l'énoncé de référence
+    assemblage_agent: str | None = None  # résultat du contrôle de l'assemblage écrit par un agent
+    assemblage_etapes: list[str] = Field(default_factory=list)  # étapes de la copie qu'il utilise
     axioms: dict[str, list[str]] = Field(default_factory=dict)
     axioms_ok: bool = False
 

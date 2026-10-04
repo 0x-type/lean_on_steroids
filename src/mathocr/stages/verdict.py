@@ -54,6 +54,16 @@ def decide(
     if lean.run is not None and lean.run.timed_out:
         blocking.append(f"Lean a dépassé le délai ({lean.run.seconds:.0f} s).")
 
+    # Assemblage accepté : il démontre l'énoncé avec une partie des étapes ; une étape non vérifiée qu'il
+    # n'utilise pas (seconde démonstration inachevée, remarque) devient une remarque. Une étape réfutée
+    # reste bloquante (une affirmation fausse est une erreur même si elle ne sert pas).
+    glue_ok = bool(lean.assemblage_agent and lean.assemblage_agent.startswith("accepté"))
+    if glue_ok:
+        remarks.append(f"Raisonnement assemblé dans Lean : {lean.assemblage_agent.removeprefix('accepté : ')}.")
+    elif lean.assemblage_agent:
+        blocking.append(f"Assemblage du raisonnement : {lean.assemblage_agent}.")
+    unused = {s.id for s in st.steps} - set(lean.assemblage_etapes) if glue_ok else set()
+
     # Fidélité, étape par étape
     fid_bad: dict[str, list[str]] = {}
     fid_ok: dict[str, set[str]] = {}
@@ -66,7 +76,7 @@ def decide(
                 fid_ok.setdefault(sid, set()).add(c.kind)
     for sid, probs in fid_bad.items():
         for p in probs:
-            blocking.append(f"Fidélité ({sid}) — {p}")
+            (remarks if sid in unused else blocking).append(f"Fidélité ({sid}) — {p}")
 
     # Incertitudes de lecture
     uncertain_steps: set[str] = set()
@@ -93,6 +103,12 @@ def decide(
             formal_errors.append(c)
     for c in formal_errors:
         blocking.append(f"L'énoncé Lean de l'étape {c.step_id} ne compile pas : la formalisation est à reprendre.")
+    for c in [c for c in unverified if c.step_id in unused]:
+        remarks.append(f"Étape {c.step_id} non vérifiée, mais inutile à la démonstration assemblée.")
+    unverified = [c for c in unverified if c.step_id not in unused]
+    for c in [c for c in agent_only if c.step_id in unused]:
+        remarks.append(f"Étape {c.step_id} non justifiée, mais inutile à la démonstration assemblée.")
+    agent_only = [c for c in agent_only if c.step_id not in unused]
     for c in unverified:
         blocking.append(f"Étape {c.step_id} ni vérifiée ni réfutée par l'automatisation élémentaire "
                         f"(saut logique, justification manquante ou limite de l'outil).")
@@ -111,7 +127,7 @@ def decide(
     evidence = {"empreinte_numerique", "application_predicat", "retrotraduction"}
     for f in formal.steps:
         step = next((s for s in st.steps if s.id == f.step_id), None)
-        if step is None or step.implicit or f.role == "none":
+        if step is None or step.implicit or f.role == "none" or f.step_id in unused:
             continue
         if f.step_id in fid_bad:
             continue
@@ -131,7 +147,9 @@ def decide(
                            f"par un argument élémentaire.")
     for o in st.observations:
         tag = ", ".join(o.step_ids)
-        if o.severity in ("lacune", "erreur") and not (o.step_ids and set(o.step_ids) <= lean_ok):
+        if o.severity in ("lacune", "erreur") and o.step_ids and set(o.step_ids) <= unused:
+            remarks.append(f"Remarque ({tag}, partie inutile à la démonstration assemblée) : {o.text}")
+        elif o.severity in ("lacune", "erreur") and not (o.step_ids and set(o.step_ids) <= lean_ok):
             blocking.append(f"Observation ({tag}, non certifiée par Lean) : {o.text}")
         elif o.severity in ("lacune", "erreur"):
             # Lean a vérifié ces étapes à partir de ce que l'élève a écrit : la remarque porte sur la
@@ -188,6 +206,7 @@ def decide(
                            f"(contre-exemple : {c.counterexample}). Transcription et formalisation contrôlées.")
         return VerdictReport(verdict=Verdict.error, reasons=reasons, blocking_issues=blocking, remarks=remarks)
 
+    uncertain_steps -= unused
     if not blocking and uncertain_steps:
         blocking.append("Lecture ambiguë bloquante sur les étapes " + ", ".join(sorted(uncertain_steps)) + ".")
     if not blocking:

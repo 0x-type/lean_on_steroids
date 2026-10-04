@@ -65,7 +65,7 @@ def interpret(
     formal: Formalization,
     source_lines: list[str],
     kit_faits: set[str] = frozenset(),
-) -> tuple[list[StepCheck], dict[str, list[str]], bool, bool, dict]:
+) -> tuple[list[StepCheck], dict[str, list[str]], bool, bool, dict, str | None]:
     by_kind: dict[tuple[str, str | None], Segment] = {}
     for s in gen.segments:
         if s.kind not in ("eval", "axioms"):
@@ -181,7 +181,21 @@ def interpret(
                 break
         key = tuple(sorted(s.meta["point"].items()))
         evals.setdefault(s.step_id, {}).setdefault(key, {})[s.meta["side"]] = val
-    return checks, axioms, assembly_ok, statement_match, evals
+    # Assemblage écrit par un agent (cas, absurde, témoins…) : accepté s'il compile sans axiome interdit
+    # et n'utilise que les étapes de la copie, le kit et de la logique.
+    glue_note = None
+    glue = by_kind.get(("assembly_agent", None))
+    if glue is not None:
+        from ..theoremes import juger_assemblage
+        if _errors(glue, msgs) or not axioms_ok(axioms, glue.decl):
+            glue_note = ("refusé : l'assemblage proposé ne passe pas dans Lean", [])
+        else:
+            ok, why, used_steps = juger_assemblage(formal.assemblage_agent or "", uses.get(glue.decl, []))
+            glue_note = (("accepté : " if ok else "refusé : ") + why,
+                         [n.split(".")[-1].removesuffix("_agent") for n in used_steps])
+            if ok:
+                assembly_ok = statement_match = True
+    return checks, axioms, assembly_ok, statement_match, evals, glue_note
 
 
 def axioms_ok(axioms: dict[str, list[str]], decl: str | None) -> bool:
@@ -225,12 +239,14 @@ def verify(
     run = run_lean(gen.source, cfg)
     report.run = run
     lines = gen.source.splitlines()
-    checks, axioms, assembly_ok, statement_match, evals = interpret(gen, run.messages, structure, formal, lines,
+    checks, axioms, assembly_ok, statement_match, evals, glue_note = interpret(gen, run.messages, structure, formal, lines,
                                                                    set(ref.kit.faits) if ref.kit else set())
     report.steps = checks
     report.axioms = axioms
     report.assembly_ok = assembly_ok and not run.timed_out
     report.statement_match = statement_match and not run.timed_out
+    if glue_note:
+        report.assemblage_agent, report.assemblage_etapes = glue_note[0], glue_note[1]
     final = {k: axioms[k] for k in ("Copie.assemblage", "Copie.accord_enonce") if k in axioms}
     report.axioms_ok = len(final) == 2 and not check_axioms(final)
     return report, evals

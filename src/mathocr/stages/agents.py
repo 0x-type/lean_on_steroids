@@ -466,3 +466,49 @@ def polish_feedback(fb: Feedback, vr: VerdictReport, st: ProofStructure, cfg) ->
     new.generated_by = f"reformulé par {eng.name} à partir du gabarit"
     new.note_pour_correcteur = fb.note_pour_correcteur
     return new
+
+
+
+# ---------------------------------------------------------------------------
+# Assemblage du raisonnement (cas, absurde, témoins…) par un agent
+# ---------------------------------------------------------------------------
+
+
+class WireAssemblage(BaseModel):
+    possible: bool
+    preuve: str = ""
+    manque: str = ""
+
+
+def assemble(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lean: LeanReport,
+             cfg) -> tuple[Formalization, str | None]:
+    """L'agent écrit la preuve de l'énoncé à partir des étapes de l'élève ; Lean et les contrôles jugeront.
+
+    Retourne (formalisation avec l'assemblage, ce qui manque selon l'agent s'il juge l'assemblage impossible)."""
+    gen = LeanGenerator(ref, st, fm)
+    status = {c.step_id: c.status for c in lean.steps}
+    ok = {"verifie_elementaire", "verifie_theoreme"}
+    sigs = [sig for name, sig in gen.signatures()
+            if status.get(name.split(".")[-1].removesuffix("_agent")) in ok]
+    if not sigs:
+        return fm, None
+    scopes = {sc.id: sc for sc in st.scopes}
+    lines = []
+    for s_ in st.steps:
+        sc = scopes.get(s_.scope)
+        where = f" [portée {s_.scope} : {', '.join(sc.variables)} ; hypothèses {', '.join(sc.assumptions)}]" if sc else ""
+        lines.append(f"- {s_.id} ({s_.kind}{', implicite' if s_.implicit else ''}){where} : {s_.statement}"
+                     + (f" — utilise {', '.join(s_.depends_on)}" if s_.depends_on else "")
+                     + f" — Lean : {status.get(s_.id, '?')}")
+    kit = "; ".join(f"Kit.{k.nom} : {k.enonce}" for k in ref.kit.lemmes) if ref.kit else "(aucun)"
+    task = prompts.ASSEMBLE_TASK.format(enonce=ref.lean_statement, contexte=_contexte(ref), kit=kit,
+                                        etapes="\n".join(lines), signatures="\n".join(sigs))
+    out = _engine(cfg).structured(prompts.ASSEMBLE_SYSTEM, task, [], WireAssemblage)
+    if not out.possible or not out.preuve.strip():
+        return fm, out.manque or "l'agent n'a pas pu assembler le raisonnement"
+    proof = _admissible(out.preuve, "assemblage (agent)")
+    if proof is None:
+        return fm, "assemblage refusé par la politique de sécurité"
+    fm = fm.model_copy(deep=True)
+    fm.assemblage_agent = proof
+    return fm, None

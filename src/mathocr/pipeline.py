@@ -205,6 +205,24 @@ def _run(
                 _save(out_dir, "2_structure.json", st)
 
     fm, lean, evals = tier2(st, fm, lean, evals)
+
+    # Raisonnement autre que direct / récurrence (cas, absurde, témoins…) : un agent écrit l'assemblage des
+    # étapes de l'élève, que Lean vérifie et que des contrôles empêchent d'ajouter des mathématiques.
+    manque = None
+    if cfg.reasoning_engine and lean.run is not None and not lean.statement_match and not lean.policy_violations \
+            and not any(c.status in ("refute", "erreur_formalisation") for c in lean.steps):
+        from .stages.agents import assemble
+        set_stage("assemblage")
+        fm2, manque = assemble(ref, st, fm, lean, cfg)
+        if fm2.assemblage_agent:
+            fm = fm2
+            _save(out_dir, "3c_assemblage.json", fm)
+            set_stage("lean")
+            lean, evals = verify(ref, st, fm, scfg, out_dir)
+            lean_seconds += lean.run.seconds if lean.run else 0.0
+            _save(out_dir, "4_lean.json", lean)
+        elif manque:
+            lean.assemblage_agent = f"impossible selon l'agent : {manque}"
     set_stage("fidélité")
     fid = run_fidelity(tr, st, fm, lean, evals, ref)
 

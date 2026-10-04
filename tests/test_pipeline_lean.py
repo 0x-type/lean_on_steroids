@@ -214,3 +214,39 @@ def test_exercise_kit_result_closes_a_step(tmp_path):
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     c = lean.steps[0]
     assert c.status == "verifie_elementaire" and "kit" in (c.closed_by or ""), c
+
+
+def _glue_case(glue: str):
+    from mathocr.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
+    ref = ReferenceStatement(exercise_id="abs", statement_latex="Si x² = 0 alors x = 0.",
+                             lean_statement="∀ (x : ℝ), x ^ 2 = 0 → x = 0",
+                             contexte={"objets": [{"nom": "x", "type": "ℝ"}],
+                                       "hypotheses": [{"nom": "h_eq", "lean": "x ^ 2 = 0"}]})
+    src = [SourceRef(line_id="p1.L01", excerpt="x")]
+    st = ProofStructure(scopes=[{"id": "abs", "assumptions": ["s1"]}], pattern={"kind": "libre", "conclusion_step": "s3"},
+                        steps=[ProofStep(id="s1", kind="hypothese", scope="abs", statement="x ≠ 0", source=src),
+                               ProofStep(id="s2", kind="affirmation", scope="abs", statement="x^2 > 0", depends_on=["s1"],
+                                         source=src),
+                               ProofStep(id="s3", kind="conclusion", statement="x = 0", source=src)])
+    fm = Formalization(scopes=[], assemblage_agent=glue, steps=[
+        StepFormal(step_id="s1", role="hyp", claim="x ≠ 0"),
+        StepFormal(step_id="s2", role="prop", claim="0 < x ^ 2", uses=["s1"]),
+        StepFormal(step_id="s3", role="none", not_formalized_reason="conclusion par l'absurde")])
+    return ref, st, fm
+
+
+@needs_lean
+@pytest.mark.lean
+@pytest.mark.parametrize("glue,accepted", [
+    ("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nlinarith", True),          # absurde, logique seule
+    ("intro x hx\nexact pow_eq_zero_iff (two_ne_zero) |>.mp hx", False),                # ignore la copie
+    ("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nnlinarith", False),          # tactique interdite
+])
+def test_agent_assembly_is_checked(tmp_path, glue, accepted):
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+    ref, st, fm = _glue_case(glue)
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    assert lean.steps[1].status == "verifie_elementaire", lean.steps[1]
+    assert (lean.assemblage_agent or "").startswith("accepté") is accepted, lean.assemblage_agent
+    assert lean.statement_match is accepted

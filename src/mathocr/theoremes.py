@@ -142,3 +142,34 @@ def imports_pour(cles: list[str], cat: Catalogue | None = None) -> list[str]:
             if imp not in out:
                 out.append(imp)
     return out
+
+
+# Assemblage par agent : de la logique (cas, absurde, témoins, ∀/∃) et de l'arithmétique linéaire pour les
+# conditions annexes, rien qui puisse ajouter un raisonnement mathématique absent de la copie.
+TACTIQUES_INTERDITES_ASSEMBLAGE = {
+    "simp", "simp_all", "simpa", "nlinarith", "norm_num", "ring", "ring_nf", "field_simp", "aesop", "decide",
+    "polyrith", "grind", "linear_combination", "bound", "gcongr", "interval_cases", "mathocr_core", "mathocr_kit",
+    "exact?", "apply?", "hint", "norm_cast", "push_cast", "nlinarith!", "positivity", "abel", "group", "noncomm_ring"}
+MODULES_LOGIQUES = ("Init", "Std", "Batteries", "Mathlib.Logic", "Mathlib.Order", "Mathlib.Tactic",
+                    "Mathlib.Algebra.Order")
+
+
+def juger_assemblage(texte: str, usages: list[tuple]) -> tuple[bool, str, list[str]]:
+    """Un assemblage proposé par un agent n'ajoute-t-il rien aux étapes de l'élève ?
+
+    Retourne (accepté, explication, étapes de la copie utilisées)."""
+    mots = set(re.findall(r"[A-Za-z_][\w!?']*", texte))
+    interdits = sorted(mots & TACTIQUES_INTERDITES_ASSEMBLAGE)
+    if interdits:
+        return False, f"l'assemblage emploie {', '.join(interdits)}, qui pourrait ajouter un calcul absent de la copie", []
+    etapes = sorted({u[0] for u in usages if u[1] == "Copie"})
+    # Seuls les lemmes ÉCRITS dans l'assemblage doivent être de la logique ; ceux qu'emploie linarith ou omega
+    # en interne relèvent de l'arithmétique linéaire, qu'on autorise pour les conditions annexes.
+    ecrits = {m.split(".")[-1] for m in mots}
+    autres = sorted({u[0] for u in usages if u[1] not in ("Copie", "Kit") and u[0].split(".")[-1] in ecrits
+                     and not any(u[1] == m or u[1].startswith(m + ".") for m in MODULES_LOGIQUES)})
+    if autres:
+        return False, f"l'assemblage utilise {', '.join(autres)}, qui n'est pas de la logique pure", etapes
+    if not etapes:
+        return False, "l'assemblage n'utilise aucune étape de la copie", etapes
+    return True, "assemblage logique des étapes de la copie (" + ", ".join(e.split(".")[-1] for e in etapes) + ")", etapes

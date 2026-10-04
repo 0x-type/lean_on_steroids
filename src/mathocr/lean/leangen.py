@@ -136,6 +136,8 @@ class LeanGenerator:
                 v += check_fragment(f.agent_proof, w + " (preuve agent)", multiline=True)
             if f.agent_refutation:
                 v += check_fragment(f.agent_refutation, w + " (réfutation agent)", multiline=True)
+        if self.fm.assemblage_agent:
+            v += check_fragment(self.fm.assemblage_agent, "assemblage (agent)", multiline=True)
         known = {s.id for s in self.st.steps}
         for f in self.fm.steps:
             if f.step_id not in known:
@@ -250,6 +252,19 @@ class LeanGenerator:
 
     def _unfold(self) -> str:
         return f"simp only [{', '.join(self.defs)}] at *" if self.defs else ""
+
+    def signatures(self) -> list[tuple[str, str]]:
+        """(nom Lean, « theorem nom binders : énoncé ») des étapes démontrables, pour l'agent d'assemblage.
+        Une étape fermée au niveau 2 est désignée par sa preuve d'agent."""
+        out = []
+        for step in self.st.steps:
+            f = self._formal(step.id)
+            if f is None or f.role != "prop" or not f.claim:
+                continue
+            name = f"{step.id}_agent" if f.agent_proof else step.id
+            bsrc = " ".join(f"({n} : {t})" for n, t in self._step_binders(step.id))
+            out.append((f"{NS}.{name}", f"theorem {NS}.{name} {bsrc} : {f.claim}"))
+        return out
 
     def _elementary_proof(self) -> str:
         alts = ["mathocr_core", "(intros; mathocr_core)"]
@@ -433,6 +448,13 @@ class LeanGenerator:
                     "  first\n  | exact hc\n  | (simpa using hc)\n"
                     f"  | {unfold}\n  | (intros; mathocr_core)\n")
             theorems += [f"{NS}.assemblage", f"{NS}.accord_enonce"]
+        if self.fm.assemblage_agent:
+            body = "\n".join("  " + ln for ln in self.fm.assemblage_agent.strip().splitlines())
+            w.block("assembly_agent", None, f"{NS}.assemblage_agent",
+                    "/-- Assemblage du raisonnement de l'élève (cas, absurde, témoins…), écrit par un agent à partir\n"
+                    "    des seules étapes de la copie ; contrôlé (tactiques et lemmes utilisés). -/\n"
+                    f"theorem assemblage_agent : Reference.enonce := by\n  unfold Reference.enonce\n{body}\n")
+            theorems.append(f"{NS}.assemblage_agent")
         w.emit(f"end {NS}")
         w.emit("")
 
@@ -465,7 +487,7 @@ class LeanGenerator:
 
         # Théorèmes de bibliothèque utilisés par chaque preuve de niveau 2 : une étape n'est « justifiée par
         # un théorème cité » que si la preuve n'en utilise pas d'autre (voir mathocr.theoremes).
-        agents = [s.decl for s in w.segments if s.kind == "agent_proof" and s.decl]
+        agents = [s.decl for s in w.segments if s.kind in ("agent_proof", "assembly_agent") and s.decl]
         if agents:
             w.block("uses", None, None, _USES_HELPER + "\n".join(
                 f"#eval mathocrReportUses `{d}" for d in agents) + "\n")
@@ -489,7 +511,10 @@ partial def mathocrUsedTheorems (env : Environment) (n : Name) : Array (Name × 
     for d in v.getUsedConstants do
       match env.getModuleIdxFor? d with
       | none =>
-        if d.getRoot == `Kit then out := out.push (d, `Kit) else todo := todo.push d
+        -- Lemmes du kit et étapes de la copie : déjà vérifiés, on ne regarde pas dedans.
+        if d.getRoot == `Kit then out := out.push (d, `Kit)
+        else if d.getPrefix == `Copie && !(n.isPrefixOf d) then out := out.push (d, `Copie)
+        else todo := todo.push d
       | some i =>
         if let some (.thmInfo _) := env.find? d then
           if !(Lean.Meta.isInstanceCore env d) then

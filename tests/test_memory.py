@@ -23,6 +23,8 @@ class FakeFormalizer(Engine):
     def structured(self, system, text, images, schema, *, effort="high"):
         if schema is WireTier2:  # niveau 2 : l'agent simulé n'a pas de preuve à proposer
             return WireTier2()
+        if schema.__name__ == "WireAssemblage":  # pas d'assemblage proposé
+            return schema(possible=False, manque="simulé")
         assert schema is WireFormalization
         self.calls.append(text)
         return WireFormalization(scopes=[{"scope_id": "H", "binders": [{"name": "n", "type": "ℕ"}]}],

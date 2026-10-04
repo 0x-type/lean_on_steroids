@@ -68,7 +68,13 @@ chaîne) ou nécessairement utilisées. N'ajoute pas de dépendance que la copie
 - Étapes implicites (`implicit` = vrai) autorisées UNIQUEMENT pour : `chaine_egalites` (A=B, B=C, C=D ⇒ A=D), \
 `depliage_definition`, `schema_recurrence` (initialisation + hérédité ⇒ ∀n). Aucune autre.
 - `scopes` : une portée par bloc « soit n… supposons… » avec ses variables et ses hypothèses (ids d'étapes).
-- `pattern` : direct, recurrence_simple (base_step, heredity_scope, heredity_step, conclusion_step, variable) ou aucun.
+- `pattern` : direct, recurrence_simple (base_step, heredity_scope, heredity_step, conclusion_step, variable), \
+libre (raisonnement par cas, par l'absurde, contraposée, avec témoins…, conclusion_step = la conclusion) ou aucun.
+- Raisonnement par cas ou par l'absurde : une portée par cas (ou pour l'hypothèse absurde), dont l'hypothèse \
+(« a = 0 », « supposons f non constante ») est une étape `hypothese` listée dans `assumptions`.
+- Témoins : quand l'élève obtient des objets (« il existe x₁, x₂ tels que … », « soit c tel que … ») puis \
+s'en sert, l'existence est une étape (affirmation), et une portée nouvelle déclare ces objets dans `variables` \
+avec, comme étape `hypothese` de la portée, leurs propriétés ; les étapes qui les utilisent sont dans cette portée.
 - `observations` : problèmes de rédaction ou de logique visibles (severity : info, redaction, lacune, erreur). \
 Signale un connecteur injustifié, une quantification manquante, une étape non justifiée. Ne signale pas une \
 erreur de calcul par intuition : c'est Lean qui tranchera.
@@ -181,3 +187,29 @@ l'identifiant de la ligne. Transcris chaque ligne avec les mêmes règles que po
 texte tel quel, mathématiques en LaTeX entre $…$, aucune correction, fragments ambigus déclarés dans \
 `uncertain` (span = sous-chaîne exacte de `text`, alternatives avec probabilités, raison tirée du tracé). \
 Réponds avec un élément par identifiant, dans l'ordre."""
+
+
+ASSEMBLE_SYSTEM = """Tu écris en Lean 4 (Mathlib) l'ASSEMBLAGE d'une démonstration d'élève : la preuve de l'énoncé \
+à partir des étapes de l'élève, chacune déjà démontrée et disponible comme théorème. Tu reproduis la structure \
+du raisonnement de l'élève (cas, raisonnement par l'absurde, contraposée, témoins « il existe … tel que », \
+récurrence…), et tu ne fais AUCUN raisonnement mathématique toi-même : seulement de la logique (intro, \
+rintro, by_cases, by_contra, push_neg, exfalso, absurd, rcases, obtain, cases, exact, apply, refine, use, \
+constructor, left, right, have, show, Or.elim, lt_or_eq_of_le, le_or_lt, lt_trichotomy, Classical.em) et \
+linarith ou omega pour une condition annexe immédiate (ex. 0 < a à partir de 0 ≤ a et a ≠ 0). Interdits : \
+simp, simpa, simp_all, norm_num, nlinarith, ring, ring_nf, positivity, field_simp, aesop, decide, et tout \
+lemme qui ne soit pas de la logique. Si les étapes de l'élève ne suffisent pas (cas oublié, étape manquante, \
+saut), réponds possible = false et dis précisément ce qui manque : ne comble jamais un trou de la copie."""
+
+ASSEMBLE_TASK = """Énoncé à démontrer (déjà déplié, c'est le but) : `{enonce}`
+Contexte de l'énoncé (introduit par le but : utilise intro avec ces noms) : {contexte}
+Résultats du kit de l'exercice (utilisables) : {kit}
+
+Raisonnement de l'élève (dans l'ordre de la copie) :
+{etapes}
+
+Théorèmes disponibles (étapes de l'élève déjà démontrées ; les arguments sont, dans l'ordre, les objets, \
+les hypothèses de l'énoncé, les variables de portée puis les étapes dont elles dépendent) :
+{signatures}
+
+Réponds avec `possible` et `preuve` : le bloc tactique qui suit `by` (le but est l'énoncé ci-dessus), \
+sans commentaire ni sorry. Si possible = false, mets dans `manque` ce qui manque à la copie."""
