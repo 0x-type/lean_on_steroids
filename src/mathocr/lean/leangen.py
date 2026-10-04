@@ -358,7 +358,9 @@ class LeanGenerator:
                 f"def enonce : Prop := {self.ref.lean_statement}\n"
                 "end Reference\n")
         if self.ref.kit and self.ref.kit.lemmes:
-            names = ", ".join(f"Kit.{k.nom}" for k in self.ref.kit.lemmes)
+            # Un lemme qui est un grand théorème ne ferme une étape automatiquement que si la copie le cite.
+            names = ", ".join(f"Kit.{k.nom}" for k in self.ref.kit.lemmes
+                              if not k.theoreme or k.theoreme in self.fm.cites_copie) or "True.intro"
             body = "".join(f"/-- {k.description or k.nom} -/\ntheorem {k.nom} : {k.enonce} := by\n"
                            + "\n".join("  " + ln for ln in k.preuve.strip().splitlines()) + "\n"
                            for k in self.ref.kit.lemmes)

@@ -75,11 +75,36 @@ def _plat(s: str) -> str:
     return " " + " ".join(mots) + " "
 
 
-def reperer(texte: str, cat: Catalogue | None = None) -> list[str]:
-    """Clés des théorèmes (actifs) dont un nom figure dans le texte, mot pour mot (aux accents près)."""
+_SIGLE = re.compile(r"(?<![A-Za-z])([A-Z](?:\.?[A-Z]){2,})\.?(?![A-Za-z])")
+
+
+def _sigles_proches(texte: str, cat: Catalogue) -> list[str]:
+    """Sigle écrit avec une lettre de travers (« TVA » pour TVI) : même longueur, même première lettre, une
+    seule lettre différente, et pas lui-même le sigle d'un autre théorème. La citation n'est acceptée que si
+    Lean montre que l'étape emploie bien ce théorème (juger_usages)."""
+    actifs = cat.actifs()
+    sigles = {a.replace(".", ""): k for k, th in actifs.items() for a in th.alias
+              if a.replace(".", "").isupper() and a.replace(".", "").isalpha() and len(a.replace(".", "")) >= 3}
+    out = []
+    for m in _SIGLE.finditer(texte):
+        w = m.group(1).replace(".", "")
+        if w in sigles:
+            continue
+        for sig, k in sigles.items():
+            if len(sig) == len(w) and sig[0] == w[0] and sum(a != b for a, b in zip(sig, w)) == 1 and k not in out:
+                out.append(k)
+    return out
+
+
+def reperer(texte: str, cat: Catalogue | None = None, approx: bool = False) -> list[str]:
+    """Clés des théorèmes (actifs) dont un nom figure dans le texte, mot pour mot (aux accents près) ;
+    avec `approx`, aussi les sigles à une lettre près (« TVA » écrit pour « TVI »)."""
     cat = cat or charger()
     t = _plat(texte)
-    return [k for k, th in cat.actifs().items() if any(_plat(a) in t for a in th.alias)]
+    out = [k for k, th in cat.actifs().items() if any(_plat(a) in t for a in th.alias)]
+    if approx:
+        out += [k for k in _sigles_proches(texte, cat) if k not in out]
+    return out
 
 
 def citations_ancrees(st, tr, cat: Catalogue | None = None) -> dict[str, list[str]]:
@@ -99,24 +124,38 @@ def citations_ancrees(st, tr, cat: Catalogue | None = None) -> dict[str, list[st
         if first > 0:
             ids.append(order[first - 1])
         texte = " ".join(tr.line(i).text for i in ids)
-        cles = set(reperer(texte, cat))
+        cles = set(reperer(texte, cat, approx=True))
         for c in getattr(s, "citations", []) or []:
             if c.theoreme in cat.actifs() and _plat(c.extrait).strip() and _plat(c.extrait) in _plat(texte) \
-                    and c.theoreme in reperer(c.extrait, cat):
+                    and c.theoreme in reperer(c.extrait, cat, approx=True):
                 cles.add(c.theoreme)
         if cles:
             out[s.id] = sorted(cles)
     return out
 
 
+def cles_kit(usages: list[tuple], kit_theoremes: dict[str, str], cites_copie) -> list[str]:
+    """Théorèmes cités ailleurs dans la copie et employés ici à travers un lemme du kit."""
+    return sorted({kit_theoremes[u[0]] for u in usages
+                   if u[1] == "Kit" and kit_theoremes.get(u[0]) in set(cites_copie)})
+
+
 def juger_usages(cles: list[str], usages: list[tuple], cat: Catalogue | None = None,
-                 permis_exercice: set[str] | frozenset = frozenset()) -> tuple[bool, str]:
+                 permis_exercice: set[str] | frozenset = frozenset(),
+                 kit_theoremes: dict[str, str] | None = None) -> tuple[bool, str]:
     """La preuve Lean d'une étape s'appuie-t-elle exactement sur le(s) théorème(s) cité(s) ?
 
     `usages` : (théorème, module[, règle de simplification]) utilisés directement par la preuve. Une règle de
     simplification de la bibliothèque (@[simp]) est un fait de base, sauf si c'est un théorème du catalogue.
     Retourne (accepté, explication)."""
     cat = cat or charger()
+    kit_theoremes = kit_theoremes or {}
+    # Un lemme du kit qui est un grand théorème (le TVI mis en forme pour l'exercice) compte comme ce théorème.
+    kit_hors = sorted({f"{u[0]} ({cat.theoremes[kit_theoremes[u[0]]].nom if kit_theoremes[u[0]] in cat.theoremes else kit_theoremes[u[0]]})"
+                       for u in usages if u[1] == "Kit" and u[0] in kit_theoremes and kit_theoremes[u[0]] not in cles})
+    if kit_hors:
+        return False, f"la preuve utilise {', '.join(kit_hors)}, que la copie ne cite pas"
+    kit_utilises = sorted({u[0] for u in usages if u[1] == "Kit" and kit_theoremes.get(u[0]) in cles})
     cites = [cat.theoremes[k] for k in cles if k in cat.theoremes]
     permis = {lem for t in cites for lem in t.lemmes + t.compagnons} | cat.elementaires_avances | set(permis_exercice)
     nommes = cat.lemmes_nommes()
@@ -127,7 +166,7 @@ def juger_usages(cles: list[str], usages: list[tuple], cat: Catalogue | None = N
     if hors:
         return False, f"la preuve utilise aussi {', '.join(hors)}, que la copie ne cite pas"
     if cites:
-        utilises = [n for n in gros if any(n in t.lemmes for t in cites)]
+        utilises = [n for n in gros if any(n in t.lemmes for t in cites)] + kit_utilises
         if not utilises:
             return False, "la preuve n'utilise pas le théorème cité"
         return True, f"{' et '.join(t.nom for t in cites)} (Mathlib : {', '.join(utilises)})"
@@ -154,15 +193,20 @@ MODULES_LOGIQUES = ("Init", "Std", "Batteries", "Mathlib.Logic", "Mathlib.Order"
                     "Mathlib.Algebra.Order")
 
 
-def juger_assemblage(texte: str, usages: list[tuple]) -> tuple[bool, str, list[str]]:
+def juger_assemblage(texte: str, usages: list[tuple], kit_theoremes: dict[str, str] | None = None,
+                     cites_copie=()) -> tuple[bool, str, list[str]]:
     """Un assemblage proposé par un agent n'ajoute-t-il rien aux étapes de l'élève ?
 
     Retourne (accepté, explication, étapes de la copie utilisées)."""
+    kit_hors = sorted({u[0] for u in usages if u[1] == "Kit" and (kit_theoremes or {}).get(u[0])
+                       and kit_theoremes[u[0]] not in set(cites_copie)})
     mots = set(re.findall(r"[A-Za-z_][\w!?']*", texte))
     interdits = sorted(mots & TACTIQUES_INTERDITES_ASSEMBLAGE)
     if interdits:
         return False, f"l'assemblage emploie {', '.join(interdits)}, qui pourrait ajouter un calcul absent de la copie", []
     etapes = sorted({u[0] for u in usages if u[1] == "Copie"})
+    if kit_hors:
+        return False, f"l'assemblage utilise {', '.join(kit_hors)}, un théorème que la copie ne cite pas", etapes
     # Seuls les lemmes ÉCRITS dans l'assemblage doivent être de la logique ; ceux qu'emploie linarith ou omega
     # en interne relèvent de l'arithmétique linéaire, qu'on autorise pour les conditions annexes.
     ecrits = {m.split(".")[-1] for m in mots}

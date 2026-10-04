@@ -204,18 +204,28 @@ def test_exercise_context_is_available_to_steps_and_assembly(tmp_path):
 
 @needs_lean
 @pytest.mark.lean
-def test_exercise_kit_result_closes_a_step(tmp_path):
+@pytest.mark.parametrize("claim,cites_copie,closed", [
+    # résultat élémentaire du cours : admis sans citation
+    ("∀ x : ℝ, f x = Real.sqrt a ∨ f x = -Real.sqrt a", [], True),
+    # le TVI du kit : seulement si la copie cite le TVI quelque part
+    ("∀ x y : ℝ, f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0", [], False),
+    ("∀ x y : ℝ, f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0", ["tvi"], True),
+])
+def test_exercise_kit_result_closes_a_step(tmp_path, claim, cites_copie, closed):
     from mathocr.lean.sandbox import SandboxConfig
     from mathocr.lean.verify import verify
     from mathocr.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
     ref = ReferenceStatement(**json.loads((ROOT / "examples/collecte/exercices/mw06.json").read_text()))
     st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
         ProofStep(id="s1", kind="affirmation", statement="f s'annule", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
-    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop",
-                                                    claim="∀ x y : ℝ, f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0")])
+    fm = Formalization(scopes=[], cites_copie=cites_copie,
+                       steps=[StepFormal(step_id="s1", role="prop", claim=claim)])
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     c = lean.steps[0]
-    assert c.status == "verifie_elementaire" and "kit" in (c.closed_by or ""), c
+    if closed:
+        assert c.status == "verifie_elementaire" and "kit" in (c.closed_by or ""), c
+    else:
+        assert c.status == "non_verifie", c
 
 
 def _glue_case(glue: str):

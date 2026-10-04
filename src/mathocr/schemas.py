@@ -73,6 +73,9 @@ class LemmeKit(BaseModel):
     enonce: str  # proposition Lean autonome (∀ …)
     preuve: str  # bloc tactique (après « by »), vérifié par Lean à chaque correction
     description: str = ""  # en français, pour l'élève : « l'image de ℝ par une fonction continue est un intervalle »
+    # Clé du catalogue (« tvi »…) si le lemme est en fait un grand théorème : il ne sert alors que si la copie
+    # cite ce théorème quelque part. Sans clé : résultat élémentaire du cours, admis sans citation.
+    theoreme: str | None = None
 
 
 class Kit(BaseModel):
@@ -310,6 +313,8 @@ class Formalization(BaseModel):
     # et de la logique (cas, absurde, témoins). Contrôlé : aucune tactique ni aucun lemme qui ajouterait
     # des mathématiques absentes de la copie.
     assemblage_agent: str | None = None
+    # Théorèmes du catalogue cités quelque part dans la copie (texte écrit par l'élève).
+    cites_copie: list[str] = Field(default_factory=list)
     provenance: str = ""
 
     def of(self, sid: str) -> StepFormal:

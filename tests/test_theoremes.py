@@ -111,3 +111,49 @@ def test_ponctuation_seule_ne_bloque_pas():
     assert _sans_ponctuation(",") == _sans_ponctuation(";")
     assert _sans_ponctuation("[a, b]") == _sans_ponctuation("[a ; b]")
     assert _sans_ponctuation("x = 1") != _sans_ponctuation("x = 2")
+
+
+def test_lemme_du_kit_qui_est_un_grand_theoreme_exige_une_citation(cat):
+    """Cas réel (B06) : le TVI du kit fermait « f est constante » sans que la copie cite le TVI. Une copie qui
+    oublie complètement le TVI aurait été « vérifiée » : un pas difficile absent n'est jamais toléré."""
+    from mathocr.theoremes import cles_kit, juger_assemblage
+    kt = {"Kit.tvi_annulation": "tvi"}
+    used = [("Kit.tvi_annulation", "Kit"), ("Kit.valeurs_possibles", "Kit"), ("le_of_not_gt", "Mathlib.Order.Defs")]
+    ok, why = juger_usages([], used, cat, kit_theoremes=kt)
+    assert not ok and "valeurs intermédiaires" in why
+    assert juger_usages([], [("Kit.valeurs_possibles", "Kit")], cat, kit_theoremes=kt)[0]  # lemme élémentaire
+    # Le TVI est cité dans la copie (pas forcément à cette étape) : l'étape s'appuie sur cette citation.
+    assert cles_kit(used, kt, ["tvi"]) == ["tvi"] and cles_kit(used, kt, []) == []
+    ok, why = juger_usages(["tvi"], used, cat, kit_theoremes=kt)
+    assert ok and "Kit.tvi_annulation" in why
+    glue = [("Copie.s2", "Copie"), ("Kit.tvi_annulation", "Kit")]
+    assert not juger_assemblage("exact Kit.tvi_annulation", glue, kt, [])[0]
+    assert juger_assemblage("exact Kit.tvi_annulation", glue, kt, ["tvi"])[0]
+
+
+def test_lemme_du_kit_qui_est_un_grand_theoreme_exige_une_citation(cat):
+    """Cas réel (B06) : le TVI du kit fermait « f est constante » sans que la copie cite le TVI. Une copie qui
+    oublie complètement le TVI aurait été « vérifiée » : un pas difficile absent n'est jamais toléré."""
+    from mathocr.theoremes import cles_kit, juger_assemblage
+    kt = {"Kit.tvi_annulation": "tvi"}
+    used = [("Kit.tvi_annulation", "Kit"), ("Kit.valeurs_possibles", "Kit"), ("le_of_not_gt", "Mathlib.Order.Defs")]
+    ok, why = juger_usages([], used, cat, kit_theoremes=kt)
+    assert not ok and "valeurs intermédiaires" in why
+    assert juger_usages([], [("Kit.valeurs_possibles", "Kit")], cat, kit_theoremes=kt)[0]  # lemme élémentaire
+    # Le TVI est cité dans la copie (pas forcément à cette étape) : l'étape s'appuie sur cette citation.
+    assert cles_kit(used, kt, ["tvi"]) == ["tvi"] and cles_kit(used, kt, []) == []
+    ok, why = juger_usages(["tvi"], used, cat, kit_theoremes=kt)
+    assert ok and "Kit.tvi_annulation" in why
+    glue = [("Copie.s2", "Copie"), ("Kit.tvi_annulation", "Kit")]
+    assert not juger_assemblage("exact Kit.tvi_annulation", glue, kt, [])[0]
+    assert juger_assemblage("exact Kit.tvi_annulation", glue, kt, ["tvi"])[0]
+
+
+def test_sigle_a_une_lettre_pres(cat):
+    """« TVA » écrit pour « TVI » (copie B06) : accepté comme citation, que Lean doit encore confirmer."""
+    assert reperer("on applique TVA sur [x_1, x_2]", cat, approx=True) == ["tvi"]
+    assert reperer("on applique T.V.A sur [a, b]", cat, approx=True) == ["tvi"]
+    assert reperer("on applique TVA", cat) == []  # mode exact inchangé
+    assert reperer("d'après AVI", cat, approx=True) == []  # première lettre différente
+    assert reperer("la TVQX", cat, approx=True) == []  # longueur différente
+    assert reperer("Tva", cat, approx=True) == []  # pas un sigle

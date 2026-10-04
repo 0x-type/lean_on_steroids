@@ -154,6 +154,8 @@ def _run(
         cites = citations_ancrees(st, tr)
         for f in fm.steps:
             f.cites = cites.get(f.step_id, [])
+        from .theoremes import reperer
+        fm.cites_copie = reperer(" ".join(ln.text for ln in tr.lines), approx=True)
         _save(out_dir, "3_formalisation.json", fm)
 
         set_stage("lean")

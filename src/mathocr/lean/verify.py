@@ -39,14 +39,18 @@ def _trace(seg: Segment, msgs: list[LeanMessage], prefix: str) -> str | None:
 
 
 def _judge_agent_proof(check: StepCheck, cites: list[str], used: list[tuple[str, str]] | None,
-                       kit_faits: set[str] = frozenset()) -> None:
+                       kit_faits: set[str] = frozenset(), kit_theoremes: dict[str, str] | None = None,
+                       cites_copie=()) -> None:
     """Preuve de niveau 2 valide : saut logique, sauf si elle ne s'appuie que sur le théorème cité par
     l'élève (étape justifiée) ou n'utilise aucun théorème non élémentaire (étape élémentaire)."""
-    from ..theoremes import ACCEPTER_PREUVE_ELEMENTAIRE, juger_usages
+    from ..theoremes import ACCEPTER_PREUVE_ELEMENTAIRE, cles_kit, juger_usages
 
     if used is None:  # liste des usages absente : prudence
         return
-    ok, why = juger_usages(cites, used, permis_exercice=kit_faits)
+    # Théorème cité ailleurs dans la copie (« on applique le TVI » deux lignes plus haut) et employé ici à
+    # travers le kit : l'étape s'appuie sur une citation de l'élève.
+    cites = sorted(set(cites) | set(cles_kit(used, kit_theoremes or {}, cites_copie)))
+    ok, why = juger_usages(cites, used, permis_exercice=kit_faits, kit_theoremes=kit_theoremes)
     check.uses = [u[0] for u in used]
     if ok and cites:
         check.status = "verifie_theoreme"
@@ -65,6 +69,7 @@ def interpret(
     formal: Formalization,
     source_lines: list[str],
     kit_faits: set[str] = frozenset(),
+    kit_theoremes: dict[str, str] | None = None,
 ) -> tuple[list[StepCheck], dict[str, list[str]], bool, bool, dict, str | None]:
     by_kind: dict[tuple[str, str | None], Segment] = {}
     for s in gen.segments:
@@ -146,7 +151,8 @@ def interpret(
             if agent and not _errors(agent, msgs) and axioms_ok(axioms, agent.decl):
                 check.status = "verifie_agent"
                 check.closed_by = "preuve proposée par un agent (niveau 2)"
-                _judge_agent_proof(check, f.cites, uses.get(agent.decl), kit_faits)
+                _judge_agent_proof(check, f.cites, uses.get(agent.decl), kit_faits, kit_theoremes,
+                                   formal.cites_copie)
         # Réfutation (automatique ou proposée par un agent)
         for kind in ("refutation", "agent_refutation"):
             rs = by_kind.get((kind, step.id))
@@ -190,7 +196,8 @@ def interpret(
         if _errors(glue, msgs) or not axioms_ok(axioms, glue.decl):
             glue_note = ("refusé : l'assemblage proposé ne passe pas dans Lean", [])
         else:
-            ok, why, used_steps = juger_assemblage(formal.assemblage_agent or "", uses.get(glue.decl, []))
+            ok, why, used_steps = juger_assemblage(formal.assemblage_agent or "", uses.get(glue.decl, []),
+                                                   kit_theoremes, formal.cites_copie)
             glue_note = (("accepté : " if ok else "refusé : ") + why,
                          [n.split(".")[-1].removesuffix("_agent") for n in used_steps])
             if ok:
@@ -239,8 +246,9 @@ def verify(
     run = run_lean(gen.source, cfg)
     report.run = run
     lines = gen.source.splitlines()
-    checks, axioms, assembly_ok, statement_match, evals, glue_note = interpret(gen, run.messages, structure, formal, lines,
-                                                                   set(ref.kit.faits) if ref.kit else set())
+    checks, axioms, assembly_ok, statement_match, evals, glue_note = interpret(
+        gen, run.messages, structure, formal, lines, set(ref.kit.faits) if ref.kit else set(),
+        {f"Kit.{k.nom}": k.theoreme for k in ref.kit.lemmes if k.theoreme} if ref.kit else {})
     report.steps = checks
     report.axioms = axioms
     report.assembly_ok = assembly_ok and not run.timed_out
