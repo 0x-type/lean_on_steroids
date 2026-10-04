@@ -43,5 +43,46 @@
     "latex": "∀ x ∈ ℝ, f(x)² = a"
    }
   ]
+ },
+ "kit": {
+  "lemmes": [
+   {
+    "nom": "valeurs_possibles",
+    "enonce": "∀ (f : ℝ → ℝ) (a : ℝ), 0 ≤ a → (∀ x, f x ^ 2 = a) → ∀ x, f x = Real.sqrt a ∨ f x = -Real.sqrt a",
+    "preuve": "intro f a ha h x\nhave h2 : f x ^ 2 = Real.sqrt a ^ 2 := by rw [h x, Real.sq_sqrt ha]\nexact sq_eq_sq_iff_eq_or_eq_neg.1 h2",
+    "description": "si f(x)² = a (a ≥ 0) pour tout x, alors f(x) = √a ou f(x) = −√a"
+   },
+   {
+    "nom": "image_connexe",
+    "enonce": "∀ (f : ℝ → ℝ), Continuous f → IsPreconnected (Set.range f)",
+    "preuve": "intro f hf; exact isPreconnected_range hf",
+    "description": "l'image de ℝ par une fonction continue est connexe (un intervalle)"
+   },
+   {
+    "nom": "connexe_deux_points",
+    "enonce": "∀ (S : Set ℝ) (u v : ℝ), IsPreconnected S → S ⊆ {u, v} → u ∈ S → v ∈ S → u = v",
+    "preuve": "intro S u v hS hsub hu hv\nby_contra huv\nrcases lt_or_gt_of_ne huv with h | h\n· obtain ⟨w, hw, hw'⟩ := hS.intermediate_value hu hv continuousOn_id (show (u + v) / 2 ∈ Set.Icc (id u) (id v) from ⟨by simp; linarith, by simp; linarith⟩)\n  have hm := hsub hw\n  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hm\n  simp only [id] at hw'\n  rcases hm with e | e <;> linarith\n· obtain ⟨w, hw, hw'⟩ := hS.intermediate_value hv hu continuousOn_id (show (u + v) / 2 ∈ Set.Icc (id v) (id u) from ⟨by simp; linarith, by simp; linarith⟩)\n  have hm := hsub hw\n  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hm\n  simp only [id] at hw'\n  rcases hm with e | e <;> linarith",
+    "description": "une partie connexe de ℝ contenue dans {u, v} et contenant u et v vérifie u = v"
+   },
+   {
+    "nom": "tvi_annulation",
+    "enonce": "∀ (f : ℝ → ℝ) (x y : ℝ), Continuous f → f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0",
+    "preuve": "intro f x y hf hx hy\nobtain ⟨c, hc⟩ := intermediate_value_univ x y hf (show (0:ℝ) ∈ Set.Icc (f x) (f y) from ⟨hx, hy⟩)\nexact ⟨c, hc⟩",
+    "description": "théorème des valeurs intermédiaires : f continue, f(x) ≤ 0 ≤ f(y) ⇒ f s'annule"
+   }
+  ],
+  "faits": [
+   "Continuous.continuousOn",
+   "isPreconnected_range",
+   "isPreconnected_univ",
+   "IsPreconnected.image",
+   "Set.mem_range_self",
+   "Real.sqrt_pos",
+   "Real.sq_sqrt",
+   "Real.sqrt_nonneg",
+   "intermediate_value_univ",
+   "intermediate_value_Icc",
+   "intermediate_value_Icc'"
+  ]
  }
 }

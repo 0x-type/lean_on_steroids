@@ -198,3 +198,19 @@ def test_exercise_context_is_available_to_steps_and_assembly(tmp_path):
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     assert lean.steps[0].status == "verifie_elementaire", lean.steps[0]
     assert lean.assembly_ok and lean.statement_match
+
+
+@needs_lean
+@pytest.mark.lean
+def test_exercise_kit_result_closes_a_step(tmp_path):
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+    from mathocr.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
+    ref = ReferenceStatement(**json.loads((ROOT / "examples/collecte/exercices/mw06.json").read_text()))
+    st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
+        ProofStep(id="s1", kind="affirmation", statement="f s'annule", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop",
+                                                    claim="∀ x y : ℝ, f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0")])
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    c = lean.steps[0]
+    assert c.status == "verifie_elementaire" and "kit" in (c.closed_by or ""), c

@@ -304,7 +304,7 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
             continue
         todo.append((c.step_id, f, prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
                                                              binders=binders, claim=f.claim,
-                                                             defs=defs or "(aucune)", cite=_cite_hint(f))))
+                                                             defs=defs or "(aucune)", cite=_cite_hint(f) + _kit_hint(ref))))
 
     def attempt(task):
         sid, _, text = task
@@ -344,6 +344,14 @@ def _contexte(ref: ReferenceStatement) -> str:
     return ref.contexte.decrire() + " — soit : " + " ; ".join(
         [f"{o.nom} = {o.latex}" for o in ref.contexte.objets if o.latex]
         + [f"{h.nom} : {h.latex}" for h in ref.contexte.hypotheses if h.latex])
+
+
+def _kit_hint(ref: ReferenceStatement) -> str:
+    """Résultats du cours démontrés pour l'exercice : le niveau 2 peut s'en servir directement."""
+    if not ref.kit or not ref.kit.lemmes:
+        return ""
+    return ("\nRésultats déjà démontrés, utilisables tels quels (ex. `exact Kit.nom …`, `obtain ⟨c, hc⟩ := Kit.nom …`) : "
+            + " ; ".join(f"`Kit.{k.nom} : {k.enonce}`" for k in ref.kit.lemmes))
 
 
 def _cite_hint(f: StepFormal) -> str:

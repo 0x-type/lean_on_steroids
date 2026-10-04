@@ -99,6 +99,11 @@ class LeanGenerator:
     def _validate(self) -> None:
         v = self.violations
         v += check_fragment(self.ref.lean_statement, "énoncé de référence")
+        if self.ref.kit:
+            for k in self.ref.kit.lemmes:
+                v += check_identifier(k.nom, "kit de l'exercice")
+                v += check_fragment(k.enonce, "kit de l'exercice")
+                v += check_fragment(k.preuve, "kit de l'exercice", multiline=True)
         for n, t in self.ctx:
             v += check_identifier(n, "contexte de l'énoncé")
             v += check_fragment(t, "contexte de l'énoncé")
@@ -248,6 +253,8 @@ class LeanGenerator:
 
     def _elementary_proof(self) -> str:
         alts = ["mathocr_core", "(intros; mathocr_core)"]
+        if self.ref.kit and self.ref.kit.lemmes:
+            alts.append("mathocr_kit")
         if self.defs:
             u = self._unfold()
             alts += [f"({u}; mathocr_core)", f"(intros; {u}; mathocr_core)"]
@@ -335,12 +342,24 @@ class LeanGenerator:
                 f"/-- Énoncé de référence (validé par : {self.ref.validated_by or 'NON VALIDÉ'}). -/\n"
                 f"def enonce : Prop := {self.ref.lean_statement}\n"
                 "end Reference\n")
+        if self.ref.kit and self.ref.kit.lemmes:
+            names = ", ".join(f"Kit.{k.nom}" for k in self.ref.kit.lemmes)
+            body = "".join(f"/-- {k.description or k.nom} -/\ntheorem {k.nom} : {k.enonce} := by\n"
+                           + "\n".join("  " + ln for ln in k.preuve.strip().splitlines()) + "\n"
+                           for k in self.ref.kit.lemmes)
+            w.block("kit", None, None,
+                    "namespace Kit\n/-! Résultats du cours pour cet exercice, démontrés ici. -/\n" + body + "end Kit\n\n"
+                    "/-- Une étape qui découle d'un résultat du kit (et des seules hypothèses de l'étape). -/\n"
+                    "macro \"mathocr_kit\" : tactic => `(tactic| ((first\n"
+                    f"  | solve_by_elim (maxDepth := 6) [{names}]\n"
+                    f"  | (intros; solve_by_elim (maxDepth := 6) [{names}])); "
+                    "trace \"mathocr:closed_by=kit\"))\n")
         w.emit(f"namespace {NS}")
         if self.defs:
             pass
         w.emit("")
 
-        theorems: list[str] = []
+        theorems: list[str] = [f"Kit.{k.nom}" for k in self.ref.kit.lemmes] if self.ref.kit else []
         for step in self.st.steps:
             f = self._formal(step.id)
             if f is None or f.role in ("none", "hyp"):
@@ -469,7 +488,8 @@ partial def mathocrUsedTheorems (env : Environment) (n : Name) : Array (Name × 
     let some v := ci.value? (allowOpaque := true) | continue
     for d in v.getUsedConstants do
       match env.getModuleIdxFor? d with
-      | none => todo := todo.push d
+      | none =>
+        if d.getRoot == `Kit then out := out.push (d, `Kit) else todo := todo.push d
       | some i =>
         if let some (.thmInfo _) := env.find? d then
           if !(Lean.Meta.isInstanceCore env d) then

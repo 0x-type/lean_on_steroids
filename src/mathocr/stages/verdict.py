@@ -203,4 +203,4 @@ def decide(
 
 def _tolerated(c) -> bool:
     """Étape vraie, démontrée au niveau 2 sans grand théorème : seule sa justification manque à la copie."""
-    return bool(c.closed_by and "niveau 2" in c.closed_by)
+    return bool(c.closed_by and ("niveau 2" in c.closed_by or "kit de l'exercice" in c.closed_by))

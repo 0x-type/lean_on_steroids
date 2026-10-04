@@ -69,7 +69,10 @@ def build_feedback(tr: Transcription, st: ProofStructure, lean: LeanReport, vr: 
         s = next((x for x in st.steps if x.id == c.step_id), None)
         if s is None:
             continue
-        if c.status == "verifie_elementaire" and c.closed_by and "niveau 2" in c.closed_by:
+        if c.status == "verifie_elementaire" and c.closed_by and "kit de l'exercice" in c.closed_by:
+            perfect.append(f"{_lines(s).capitalize()} : {_say(s.statement)} découle d'un résultat du cours que tu "
+                           f"utilises sans le citer : nomme-le (théorème, propriété) pour une rédaction complète.")
+        elif c.status == "verifie_elementaire" and c.closed_by and "niveau 2" in c.closed_by:
             perfect.append(f"{_lines(s).capitalize()} : {_say(s.statement)} est vrai, mais tu ne le justifies pas. "
                            f"Ajoute l'argument (un calcul ou une propriété élémentaire suffit).")
         elif c.status == "verifie_theoreme":

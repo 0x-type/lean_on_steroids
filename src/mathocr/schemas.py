@@ -39,6 +39,9 @@ class ReferenceStatement(BaseModel):
     # écrits une fois par exercice et validés avec lui. Chaque étape peut s'en servir sans les redéclarer ;
     # l'énoncé de référence doit être de la forme ∀ objets, hypothèses → but (même ordre).
     contexte: "Contexte | None" = None
+    # Kit de l'exercice : résultats du cours démontrés une fois dans Lean (utilisables par la vérification,
+    # l'élève étant invité à les nommer) et faits de bibliothèque admis pour cet exercice.
+    kit: "Kit | None" = None
 
 
 class ObjetContexte(BaseModel):
@@ -63,6 +66,18 @@ class Contexte(BaseModel):
     def decrire(self) -> str:
         """Pour les consignes des agents : « (f : ℝ → ℝ) (a : ℝ) (h_cont : Continuous f) … »."""
         return " ".join(f"({n} : {t})" for n, t in self.binders())
+
+
+class LemmeKit(BaseModel):
+    nom: str  # identifiant Lean (dans l'espace Kit)
+    enonce: str  # proposition Lean autonome (∀ …)
+    preuve: str  # bloc tactique (après « by »), vérifié par Lean à chaque correction
+    description: str = ""  # en français, pour l'élève : « l'image de ℝ par une fonction continue est un intervalle »
+
+
+class Kit(BaseModel):
+    lemmes: list[LemmeKit] = Field(default_factory=list)
+    faits: list[str] = Field(default_factory=list)  # lemmes Mathlib admis comme faits de base pour cet exercice
 
 
 class PageImage(BaseModel):

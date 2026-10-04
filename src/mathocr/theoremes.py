@@ -109,7 +109,8 @@ def citations_ancrees(st, tr, cat: Catalogue | None = None) -> dict[str, list[st
     return out
 
 
-def juger_usages(cles: list[str], usages: list[tuple[str, str]], cat: Catalogue | None = None) -> tuple[bool, str]:
+def juger_usages(cles: list[str], usages: list[tuple], cat: Catalogue | None = None,
+                 permis_exercice: set[str] | frozenset = frozenset()) -> tuple[bool, str]:
     """La preuve Lean d'une étape s'appuie-t-elle exactement sur le(s) théorème(s) cité(s) ?
 
     `usages` : (théorème, module[, règle de simplification]) utilisés directement par la preuve. Une règle de
@@ -117,11 +118,11 @@ def juger_usages(cles: list[str], usages: list[tuple[str, str]], cat: Catalogue 
     Retourne (accepté, explication)."""
     cat = cat or charger()
     cites = [cat.theoremes[k] for k in cles if k in cat.theoremes]
-    permis = {lem for t in cites for lem in t.lemmes + t.compagnons} | cat.elementaires_avances
+    permis = {lem for t in cites for lem in t.lemmes + t.compagnons} | cat.elementaires_avances | set(permis_exercice)
     nommes = cat.lemmes_nommes()
     gros = sorted({u[0] for u in usages
                    if (u[0] in nommes or (cat.avance(u[1]) and not (len(u) > 2 and u[2])))
-                   and u[0] not in cat.elementaires_avances})
+                   and u[0] not in cat.elementaires_avances and u[1] != "Kit" and u[0] not in permis_exercice})
     hors = [n for n in gros if n not in permis]
     if hors:
         return False, f"la preuve utilise aussi {', '.join(hors)}, que la copie ne cite pas"

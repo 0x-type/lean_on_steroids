@@ -38,14 +38,15 @@ def _trace(seg: Segment, msgs: list[LeanMessage], prefix: str) -> str | None:
     return None
 
 
-def _judge_agent_proof(check: StepCheck, cites: list[str], used: list[tuple[str, str]] | None) -> None:
+def _judge_agent_proof(check: StepCheck, cites: list[str], used: list[tuple[str, str]] | None,
+                       kit_faits: set[str] = frozenset()) -> None:
     """Preuve de niveau 2 valide : saut logique, sauf si elle ne s'appuie que sur le théorème cité par
     l'élève (étape justifiée) ou n'utilise aucun théorème non élémentaire (étape élémentaire)."""
     from ..theoremes import ACCEPTER_PREUVE_ELEMENTAIRE, juger_usages
 
     if used is None:  # liste des usages absente : prudence
         return
-    ok, why = juger_usages(cites, used)
+    ok, why = juger_usages(cites, used, permis_exercice=kit_faits)
     check.uses = [u[0] for u in used]
     if ok and cites:
         check.status = "verifie_theoreme"
@@ -63,6 +64,7 @@ def interpret(
     structure: ProofStructure,
     formal: Formalization,
     source_lines: list[str],
+    kit_faits: set[str] = frozenset(),
 ) -> tuple[list[StepCheck], dict[str, list[str]], bool, bool, dict]:
     by_kind: dict[tuple[str, str | None], Segment] = {}
     for s in gen.segments:
@@ -134,6 +136,8 @@ def interpret(
         elif not errs and axioms_ok(axioms, decl):
             check.status = "verifie_elementaire"
             check.closed_by = _trace(seg, msgs, "mathocr:closed_by=") if seg else None
+            if check.closed_by == "kit":
+                check.closed_by = "résultat du cours (kit de l'exercice), sans justification écrite"
             if check.closed_by == "schema_recurrence" or (step.implicit_reason == "schema_recurrence"
                                                            and not check.closed_by):
                 check.closed_by = "schéma de récurrence (gabarit)"
@@ -142,7 +146,7 @@ def interpret(
             if agent and not _errors(agent, msgs) and axioms_ok(axioms, agent.decl):
                 check.status = "verifie_agent"
                 check.closed_by = "preuve proposée par un agent (niveau 2)"
-                _judge_agent_proof(check, f.cites, uses.get(agent.decl))
+                _judge_agent_proof(check, f.cites, uses.get(agent.decl), kit_faits)
         # Réfutation (automatique ou proposée par un agent)
         for kind in ("refutation", "agent_refutation"):
             rs = by_kind.get((kind, step.id))
@@ -221,7 +225,8 @@ def verify(
     run = run_lean(gen.source, cfg)
     report.run = run
     lines = gen.source.splitlines()
-    checks, axioms, assembly_ok, statement_match, evals = interpret(gen, run.messages, structure, formal, lines)
+    checks, axioms, assembly_ok, statement_match, evals = interpret(gen, run.messages, structure, formal, lines,
+                                                                   set(ref.kit.faits) if ref.kit else set())
     report.steps = checks
     report.axioms = axioms
     report.assembly_ok = assembly_ok and not run.timed_out
