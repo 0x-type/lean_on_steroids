@@ -108,3 +108,13 @@ def test_span_boxes_give_one_close_up_per_occurrence():
     boxes = span_boxes(ln, "2")
     assert len(boxes) == 2 and all(489 <= b[0] < b[2] <= 799 for b in boxes)
     assert span_boxes(ln, "trop long") == []
+
+
+def test_crossing_out_rule_only_ignores_an_added_mark():
+    from mathocr.stages.fidelity import _marque_en_plus
+    assert _marque_en_plus("f(x)^2", "f(x^{\\bullet})^2")  # tache sur l'ancien carré (copie B06)
+    assert _marque_en_plus("f(x)^2", "f(x^*)^2")
+    assert not _marque_en_plus("n+1", "n+2")  # symbole remplacé
+    assert not _marque_en_plus("n+1", "n+12")  # chiffre ajouté
+    assert not _marque_en_plus("x", "x'")  # un prime est un vrai symbole
+    assert not _marque_en_plus("f(x)^2", "f(x^2)^2")

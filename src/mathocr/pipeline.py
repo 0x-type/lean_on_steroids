@@ -70,6 +70,8 @@ class PipelineConfig:
     # niveau 2, sans grand théorème) n'empêche pas « raisonnement vérifié » ; elle est signalée à l'élève.
     # « strict » : toute justification absente est un saut logique.
     tolerance: str = "tolerant"
+    # Une étape dont la relecture indépendante juge la traduction infidèle est retraduite une fois.
+    fidelity_retry: bool = True
 
 
 def _load(path: Path | None, model):
@@ -204,37 +206,58 @@ def _run(
                 st = patched
                 _save(out_dir, "2_structure.json", st)
 
-    fm, lean, evals = tier2(st, fm, lean, evals)
+    def finish(st, fm, lean, evals):
+        """Niveau 2, assemblage par agent, fidélité et relecture indépendante."""
+        nonlocal lean_seconds
+        fm, lean, evals = tier2(st, fm, lean, evals)
 
-    # Raisonnement autre que direct / récurrence (cas, absurde, témoins…) : un agent écrit l'assemblage des
-    # étapes de l'élève, que Lean vérifie et que des contrôles empêchent d'ajouter des mathématiques.
-    manque = None
-    if cfg.reasoning_engine and lean.run is not None and not lean.statement_match and not lean.policy_violations \
-            and not any(c.status in ("refute", "erreur_formalisation") for c in lean.steps):
-        from .stages.agents import assemble
-        set_stage("assemblage")
-        fm2, manque = assemble(ref, st, fm, lean, cfg)
-        if fm2.assemblage_agent:
+        # Raisonnement autre que direct / récurrence (cas, absurde, témoins…) : un agent écrit l'assemblage des
+        # étapes de l'élève, que Lean vérifie et que des contrôles empêchent d'ajouter des mathématiques.
+        if cfg.reasoning_engine and lean.run is not None and not lean.statement_match and not lean.policy_violations \
+                and not any(c.status in ("refute", "erreur_formalisation") for c in lean.steps):
+            from .stages.agents import assemble
+            set_stage("assemblage")
+            fm2, manque = assemble(ref, st, fm, lean, cfg)
+            if fm2.assemblage_agent:
+                fm = fm2
+                _save(out_dir, "3c_assemblage.json", fm)
+                set_stage("lean")
+                lean, evals = verify(ref, st, fm, scfg, out_dir)
+                lean_seconds += lean.run.seconds if lean.run else 0.0
+                _save(out_dir, "4_lean.json", lean)
+            elif manque:
+                lean.assemblage_agent = f"impossible selon l'agent : {manque}"
+        set_stage("fidélité")
+        fid = run_fidelity(tr, st, fm, lean, evals, ref)
+
+        # Doutes restants : bloquent-ils vraiment le verdict ? Revérification Lean de la lecture alternative.
+        if any(u.blocking for u in tr.uncertainties):
+            from .stages.fidelity import confirm_alternatives_with_lean
+            confirm_alternatives_with_lean(ref, tr, st, fm, lean, fid, scfg)
+
+        if cfg.judge_engine:
+            from .stages.agents import backtranslate
+            set_stage("fidélité")
+            fid += backtranslate(tr, st, fm, cfg, fid=fid, ref=ref)
+        return fm, lean, evals, fid
+
+    fm, lean, evals, fid = finish(st, fm, lean, evals)
+
+    # Traduction jugée infidèle par la relecture : une reprise, avec la remarque du relecteur ; la nouvelle
+    # traduction repasse par Lean et par la même relecture (rien n'est accepté sans ces contrôles).
+    infideles = {c.step_id: c.detail for c in fid if c.kind == "retrotraduction" and not c.ok}
+    if infideles and cfg.fidelity_retry and cfg.reasoning_engine and formalization is None:
+        from .stages.agents import reformalize
+        set_stage("formalisation")
+        fm2, changed = reformalize(ref, st, fm, infideles, cfg)
+        if changed:
             fm = fm2
-            _save(out_dir, "3c_assemblage.json", fm)
+            _save(out_dir, "3d_formalisation_reprise.json", fm)
             set_stage("lean")
             lean, evals = verify(ref, st, fm, scfg, out_dir)
             lean_seconds += lean.run.seconds if lean.run else 0.0
             _save(out_dir, "4_lean.json", lean)
-        elif manque:
-            lean.assemblage_agent = f"impossible selon l'agent : {manque}"
-    set_stage("fidélité")
-    fid = run_fidelity(tr, st, fm, lean, evals, ref)
-
-    # Doutes restants : bloquent-ils vraiment le verdict ? Revérification Lean de la lecture alternative.
-    if any(u.blocking for u in tr.uncertainties):
-        from .stages.fidelity import confirm_alternatives_with_lean
-        confirm_alternatives_with_lean(ref, tr, st, fm, lean, fid, scfg)
-
-    if cfg.judge_engine:
-        from .stages.agents import backtranslate
-        set_stage("fidélité")
-        fid += backtranslate(tr, st, fm, cfg, fid=fid, ref=ref)
+            fm, lean, evals, fid = finish(st, fm, lean, evals)
     (out_dir / "5_fidelite.json").write_text(json.dumps([c.model_dump() for c in fid], ensure_ascii=False, indent=1),
                                              encoding="utf-8")
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)

@@ -423,6 +423,10 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
             if normalize_notation(u.chosen) == normalize_notation(alt.text):
                 verdicts.append((False, f"« {alt.text} » : même notation"))
                 continue
+            if u.rature and _marque_en_plus(u.chosen, alt.text):
+                verdicts.append((False, f"« {alt.text} » : rature ou tache de correction de l'élève, ignorée "
+                                        f"(texte final : « {u.chosen} »)"))
+                continue
             if _sans_ponctuation(u.chosen) == _sans_ponctuation(alt.text):
                 verdicts.append((False, f"« {alt.text} » : ponctuation seulement (« , » / « ; » / « . »)"))
                 continue
@@ -514,6 +518,20 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
                                  kind="sensibilite_lecture", ok=not blocking,
                                  detail=f"{u.id} ({u.line_id}, « {u.chosen} ») — {u.resolution}"))
     return out
+
+
+def _marque_en_plus(final: str, avec_marque: str) -> bool:
+    """La lecture `avec_marque` est-elle le texte `final` plus une marque (point, tache, astérisque) ?
+
+    Garde-fou de la règle des ratures : l'arbitre doit avoir vu une correction ET la lecture écartée ne doit
+    différer que par un ajout, jamais par un symbole remplacé (2 ↔ 3, + ↔ −)."""
+    a, b = re.sub(r"\s+", "", final), re.sub(r"\s+", "", avec_marque)
+    if a == b:
+        return False
+    b = re.sub(r"\\(bullet|cdot|ast|centerdot)(?![A-Za-z])|[*•·.]", "", b)
+    b = re.sub(r"[\^_]\{\}", "", b)
+    b = re.sub(r"[\^_](?=[)\]},]|$)", "", b)
+    return a == b
 
 
 def run_fidelity(tr: Transcription, st: ProofStructure, fm: Formalization, lean: LeanReport,

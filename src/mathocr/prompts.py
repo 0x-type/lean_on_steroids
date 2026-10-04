@@ -32,7 +32,9 @@ Tu tranches d'après la forme du tracé (en comparant avec les autres occurrence
 même élève), jamais d'après ce qui serait mathématiquement correct. Une lecture qui rend le calcul faux \
 peut être la bonne : l'élève a peut-être fait une erreur. Si l'élève a repassé ou surchargé un symbole \
 (correction d'un chiffre en un autre), la lecture est la forme FINALE visible : tes probabilités portent sur \
-ce qui est écrit à la fin, pas sur ce qui était écrit avant la correction."""
+ce qui est écrit à la fin, pas sur ce qui était écrit avant la correction. Si la marque disputée est une \
+rature ou une tache qui masque un ancien tracé (l'élève s'est corrigé), mets `rature` = vrai et place en premier \
+la lecture SANS la marque ; un vrai symbole (x*, x′, x₀, un point de multiplication) n'est jamais une rature."""
 
 ADJUDICATE_TASK = """Énoncé de l'exercice (pour information seulement ; ne sert pas à trancher) :
 {statement}
@@ -44,7 +46,8 @@ La page entière est jointe en premier pour comparer avec le reste de l'écritur
 
 Pour chaque identifiant : ordonne les lectures de la plus probable à la moins probable avec des \
 probabilités, justifie par la forme du tracé, et mets `context_based` = vrai si ta décision dépend \
-du sens mathématique ou de l'énoncé."""
+du sens mathématique ou de l'énoncé. Mets `rature` = vrai seulement si les lectures ne diffèrent que \
+par une rature ou une tache de correction (la première lecture étant le texte sans cette marque)."""
 
 STRUCTURE_SYSTEM = """Tu analyses la structure logique d'une démonstration d'élève transcrite. Tu ne \
 corriges rien, tu ne complètes rien : tu découpes ce qui est écrit en étapes et tu relies chaque étape \

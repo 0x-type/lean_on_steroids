@@ -251,6 +251,43 @@ def _formalize_llm(ref: ReferenceStatement, st: ProofStructure, cfg, *, only: di
     return fm
 
 
+def reformalize(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, flagged: dict[str, str],
+                cfg) -> tuple[Formalization, list[str]]:
+    """Refait la traduction des étapes jugées infidèles par la relecture indépendante, avec sa remarque.
+
+    Une seule reprise : la nouvelle traduction repasse ensuite par Lean et par la même relecture. Les
+    preuves de niveau 2 et l'assemblage des étapes changées sont effacés (ils portaient sur l'ancien
+    énoncé). Retourne (formalisation, étapes réellement changées)."""
+    flagged = {sid: d for sid, d in flagged.items() if any(f.step_id == sid and f.role in ("prop", "hyp")
+                                                           for f in fm.steps)}
+    if not flagged:
+        return fm, []
+    only = {sid: f"la traduction précédente était infidèle à la copie : {d} — recommence en disant exactement "
+                 f"ce que dit la copie, ni plus ni moins" for sid, d in flagged.items()}
+    try:
+        llm = _formalize_llm(ref, st, cfg, only=only, done=fm)
+    except EngineError as e:
+        log.warning("reprise de la traduction impossible : %s", e)
+        return fm, []
+    out = fm.model_copy(deep=True)
+    by_id = {f.step_id: f for f in out.steps}
+    changed = []
+    for f in llm.steps:
+        old = by_id.get(f.step_id)
+        if f.step_id not in only or old is None or (f.claim, f.role) == (old.claim, old.role):
+            continue
+        f.origin, f.cites = "agent", old.cites
+        f.agent_proof = f.agent_refutation = None
+        by_id[f.step_id] = f
+        changed.append(f.step_id)
+    if not changed:
+        return fm, []
+    out.steps = [by_id[f.step_id] for f in out.steps]
+    out.assemblage_agent = None
+    out.provenance += f" ; traduction reprise après relecture ({', '.join(changed)}) par {llm.provenance}"
+    return independent_chain_links(st, out), changed
+
+
 def _merge_partial(llm: Formalization, done: Formalization | None, only: dict | None) -> Formalization:
     if not done or not only:
         return llm

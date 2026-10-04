@@ -122,6 +122,8 @@ class Uncertainty(BaseModel):
     # Vrai si la lecture alternative s'applique à toutes les occurrences du
     # fragment dans la ligne (ex. lettre d'indice k/h tracée de la même façon).
     replace_all: bool = False
+    # Vrai si l'arbitre a vu que la marque disputée est une rature ou une tache (l'élève s'est corrigé).
+    rature: bool = False
     # Rempli par l'analyse de sensibilité (étape fidélité) :
     blocking: bool | None = None
     resolution: str | None = None

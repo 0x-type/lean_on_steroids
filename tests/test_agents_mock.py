@@ -51,7 +51,8 @@ class FakeEngine(Engine):
         if schema is WireDecisions:
             return WireDecisions(decisions=[{"id": "U01", "readings": [{"text": "+", "probability": 0.97},
                                                                        {"text": "-", "probability": 0.03}],
-                                             "reason": "barre verticale nette", "context_based": False}])
+                                             "reason": "barre verticale nette", "context_based": False,
+                                             "rature": False}])
         if schema is ProofStructure:
             st = _renum(json.loads((FIX / "structure.json").read_text()))
             if sum(1 for c in self.calls if c[1] == "ProofStructure") == 1:
@@ -184,3 +185,31 @@ def test_reading_doubt_reaches_next_chain_link():
                    mk("s8", "B = C", "L10")], scopes=[], pattern={"kind": "aucun"})
     # le doute sur la ligne L08 touche s6, donc s7 (qui reprend son membre) ; pas s8 (membre lu en L09)
     assert [s.id for s in _chain_successors(st, [st.steps[0]])] == ["s7"]
+
+
+def test_unfaithful_translation_is_redone_once_with_the_judge_remark(monkeypatch):
+    from mathocr.schemas import Formalization, ProofStep, ProofStructure as PS, ReferenceStatement, SourceRef, StepFormal
+
+    ref = ReferenceStatement(exercise_id="x", statement_latex="", lean_statement="True")
+    st = PS(scopes=[], pattern={"kind": "aucun"}, steps=[
+        ProofStep(id=i, kind="affirmation", statement=i, source=[SourceRef(line_id="p1.L01", excerpt=i)])
+        for i in ("s1", "s2")])
+    fm = Formalization(scopes=[], assemblage_agent="exact Copie.s1", steps=[
+        StepFormal(step_id="s1", role="prop", claim="∃ c : ℝ, c = 0", agent_proof="exact ⟨0, rfl⟩", cites=["tvi"]),
+        StepFormal(step_id="s2", role="prop", claim="True", agent_proof="trivial")])
+    seen = {}
+
+    def fake_llm(ref_, st_, cfg, *, only=None, done=None):
+        seen.update(only)
+        return Formalization(scopes=[], steps=[
+            StepFormal(step_id="s1", role="prop", claim="∃ c : ℝ, 0 < c ∧ c < 1 ∧ c = 0"),
+            StepFormal(step_id="s2", role="prop", claim="True")], provenance="agent fake")
+
+    monkeypatch.setattr(agents, "_formalize_llm", fake_llm)
+    out, changed = agents.reformalize(ref, st, fm, {"s1": "omet « c entre 0 et 1 »", "s2": "rien"}, cfg=None)
+    assert "omet « c entre 0 et 1 »" in seen["s1"]
+    assert changed == ["s1"]  # s2 : même énoncé, rien ne change
+    s1, s2 = out.of("s1"), out.of("s2")
+    assert s1.claim.startswith("∃ c : ℝ, 0 < c") and s1.agent_proof is None and s1.cites == ["tvi"]
+    assert s2.agent_proof == "trivial" and out.assemblage_agent is None
+    assert fm.of("s1").agent_proof == "exact ⟨0, rfl⟩"  # l'original n'est pas modifié

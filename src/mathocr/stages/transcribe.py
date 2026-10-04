@@ -87,6 +87,9 @@ class WireDecision(BaseModel):
     readings: list[WireAlt]
     reason: str
     context_based: bool
+    # Vrai si la seule différence entre les lectures est une rature ou une tache (correction de l'élève) :
+    # la lecture retenue en premier est alors le texte final, sans la marque.
+    rature: bool
 
 
 class WireDecisions(BaseModel):
@@ -492,6 +495,7 @@ def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
         # L'arbitre a tranché sur la forme en comparant avec les autres tracés de l'élève : c'est son
         # jugement (et non celui d'un lecteur à l'aveugle) qui dit si le contexte a été utilisé.
         u.context_dependent = d.context_based
+        u.rature = d.rature
         if u.readings[0].text != u.chosen:
             ln = by_line[u.line_id]
             new = u.readings[0].text

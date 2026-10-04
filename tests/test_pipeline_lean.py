@@ -124,15 +124,17 @@ def test_doubt_that_cannot_change_verdict_is_cleared_by_lean(tmp_path):
     """Cas réel : « 0^2 = 0 » pouvait se lire « 0 = 0 » (15 %). Les deux lectures sont vraies et la copie
     reste vérifiée : Lean le confirme, le doute ne bloque plus. « 0^2 = 1 » changerait le verdict."""
     from mathocr.schemas import Reading, Uncertainty
-    for alt, expected in (("0 = 0", Verdict.verified), ("0^2 = 1", Verdict.review)):
+    # Une « rature » déclarée par l'arbitre n'efface jamais un symbole remplacé (0 → 1).
+    for alt, rature, expected in (("0 = 0", False, Verdict.verified), ("0^2 = 1", False, Verdict.review),
+                                  ("0^2 = 1", True, Verdict.review)):
         tr = json.loads((EX / "fixtures" / "transcription.json").read_text())
         tr["uncertainties"].append(Uncertainty(
-            id="U99", line_id="p1.L04", span="0^2 = 0", chosen="0^2 = 0",
+            id="U99", line_id="p1.L04", span="0^2 = 0", chosen="0^2 = 0", rature=rature,
             readings=[Reading(text="0^2 = 0", score=0.7), Reading(text=alt, score=0.3)],
             reason="test").model_dump())
-        p = tmp_path / f"tr_{alt}.json"
+        p = tmp_path / f"tr_{alt}_{rature}.json"
         p.write_text(json.dumps(tr, ensure_ascii=False))
-        r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / f"out_{alt}",
+        r = run(EX / "exercice.json", [EX / "copie_p1.webp"], tmp_path / f"out_{alt}_{rature}",
                 PipelineConfig(workspace=ROOT / "lean_workspace", memory_dir=None),
                 transcription=p, structure=EX / "fixtures" / "structure.json")
         assert r.verdict.verdict == expected, (alt, r.verdict.blocking_issues)
