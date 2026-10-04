@@ -627,24 +627,25 @@ def needs_judge(u: Uncertainty) -> bool:
 
 def adjudicate_needed(tr: Transcription, ref: ReferenceStatement, cfg) -> list[tuple[Uncertainty, str]]:
     """Arbitre les seuls doutes utiles ; retourne les lectures changées [(doute, ancienne lecture)]."""
+    arbiter = getattr(cfg, "arbiter_engine", None) or cfg.reasoning_engine
     todo = [u for u in tr.uncertainties if needs_judge(u)]
     if not todo:
-        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=True,
+        tr.engines.append(EngineRun(engine=arbiter, model="", mode="arbitrage", ok=True,
                                     note="aucun doute ne peut changer le verdict : arbitre non appelé"))
         return []
     before = {u.id: u.chosen for u in todo}
     cache = Path(getattr(cfg, "cache_dir", "runs/.cache"))
     try:
-        eng = make_engine(cfg.reasoning_engine, cache)
+        eng = make_engine(arbiter, cache)
         for pg in tr.pages:
             _, im = load_page(Path(pg.path), pg.page)
             lines = [ln for ln in tr.lines if ln.page == pg.page]
             ids = {ln.id for ln in lines}
             adjudicate(eng, ref, im, lines, [u for u in todo if u.line_id in ids])
-        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model=eng.model, mode="arbitrage", ok=True,
+        tr.engines.append(EngineRun(engine=arbiter, model=eng.model, mode="arbitrage", ok=True,
                                     note=f"{len(todo)} doute(s) arbitré(s) sur {len(tr.uncertainties)}"))
     except Exception as ex:  # noqa: BLE001
-        tr.engines.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=False, error=str(ex)))
+        tr.engines.append(EngineRun(engine=arbiter, model="", mode="arbitrage", ok=False, error=str(ex)))
         return []
     return [(u, before[u.id]) for u in todo if u.chosen != before[u.id]]
 
@@ -718,12 +719,13 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
             for r in runs_meta:
                 if r.mode == "aveugle" and r.engine in notes:
                     r.note = notes[r.engine]
-        if cfg.reasoning_engine and not getattr(cfg, "lazy_judge", False):
+        arbiter = getattr(cfg, "arbiter_engine", None) or cfg.reasoning_engine
+        if arbiter and not getattr(cfg, "lazy_judge", False):
             try:
-                adjudicate(make_engine(cfg.reasoning_engine, cache), ref, im, lines, uncs)
-                runs_meta.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=True))
+                adjudicate(make_engine(arbiter, cache), ref, im, lines, uncs)
+                runs_meta.append(EngineRun(engine=arbiter, model="", mode="arbitrage", ok=True))
             except Exception as ex:  # noqa: BLE001
-                runs_meta.append(EngineRun(engine=cfg.reasoning_engine, model="", mode="arbitrage", ok=False, error=str(ex)))
+                runs_meta.append(EngineRun(engine=arbiter, model="", mode="arbitrage", ok=False, error=str(ex)))
         all_lines += lines
         all_uncs += uncs
     ok = [r.engine for r in runs_meta if r.ok and r.mode == "aveugle"]
@@ -731,4 +733,5 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
     return Transcription(pages=pages, lines=all_lines, uncertainties=all_uncs, engines=runs_meta,
                          provenance=f"Consensus de {len(ok)} moteur(s) en lecture aveugle ({', '.join(ok)})"
                                     + (f", lignes disputées relues en zoom par {', '.join(cascade)}" if cascade else "")
-                                    + (f", arbitrage par {cfg.reasoning_engine}" if cfg.reasoning_engine else "") + ".")
+                                    + (f", arbitrage par {arb}" if (arb := getattr(cfg, "arbiter_engine", None)
+                                                                    or cfg.reasoning_engine) else "") + ".")

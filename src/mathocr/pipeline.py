@@ -52,6 +52,9 @@ class PipelineConfig:
     audit_rate: float = 0.0
     reasoning_engine: str | None = None  # structure, formalisation, niveau 2, arbitrage
     judge_engine: str | None = None  # rétro-traduction (idéalement un autre fournisseur)
+    # Arbitrage des lectures douteuses (regarde l'image) : None = reasoning_engine. Permet de garder un modèle
+    # fort sur l'image quand le raisonnement texte passe à un modèle bon marché (Lean contrôle ce dernier).
+    arbiter_engine: str | None = None
     cache_dir: Path = Path("runs/.cache")
     memory_dir: Path | None = Path("runs/.memoire")  # None = pas de mémoire partagée
     photo_gate: bool = True  # refuser localement les photos inutilisables avant tout appel payant
