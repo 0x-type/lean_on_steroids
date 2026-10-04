@@ -55,7 +55,9 @@ def _engine(cfg, spec: str | None = None):
 def extract_structure(ref: ReferenceStatement, tr: Transcription, cfg) -> ProofStructure:
     eng = _engine(cfg)
     lines = "\n".join(f"{ln.id} [{ln.status.value}] {ln.text}" for ln in tr.lines)
-    task = prompts.STRUCTURE_TASK.format(statement=ref.statement_latex, lines=lines)
+    from ..theoremes import charger
+    known = "; ".join(f"{k} = {t.nom} ({', '.join(t.alias[:3])})" for k, t in charger().actifs().items()) or "(aucun)"
+    task = prompts.STRUCTURE_TASK.format(statement=ref.statement_latex, lines=lines, theoremes=known)
     st = eng.structured(prompts.STRUCTURE_SYSTEM, task, [], ProofStructure)
     for _ in range(MAX_REPAIRS):
         bad = [c for c in check_anchoring(tr, st) if c.ok is False]
@@ -301,7 +303,7 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
             continue
         todo.append((c.step_id, f, prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
                                                              binders=binders, claim=f.claim,
-                                                             defs=defs or "(aucune)")))
+                                                             defs=defs or "(aucune)", cite=_cite_hint(f))))
 
     def attempt(task):
         sid, _, text = task
@@ -333,6 +335,20 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
             log.warning("niveau 2 : %d tentative(s) abandonnée(s) après %s s (%s)", len(late), cfg.tier2_timeout_s,
                         ", ".join(futs[x][0] for x in late))
     return fm
+
+
+def _cite_hint(f: StepFormal) -> str:
+    """Consigne de niveau 2 quand l'élève a cité un théorème : s'appuyer dessus, et sur rien d'autre."""
+    if not f.cites:
+        return ""
+    from ..theoremes import charger
+    cat = charger()
+    th = [cat.theoremes[k] for k in f.cites if k in cat.theoremes]
+    return ("\nL'élève justifie cette étape par : " + " ; ".join(t.nom for t in th)
+            + ". Lemmes Mathlib correspondants : " + ", ".join(lem for t in th for lem in t.lemmes)
+            + ". Ta preuve doit utiliser l'un de ces lemmes et, à part lui, seulement des tactiques élémentaires "
+              "(simp, linarith, nlinarith, norm_num, ring, positivity, constructor…) : n'invoque aucun autre "
+              "théorème important (Lean vérifie la liste des théorèmes utilisés).")
 
 
 def _admissible(fragment: str, where: str) -> str | None:

@@ -16,6 +16,7 @@ from ..schemas import RunResult, Verdict
 
 STATUS_LABEL = {
     "verifie_elementaire": ("vérifiée", "ok"),
+    "verifie_theoreme": ("vérifiée (théorème cité)", "ok"),
     "verifie_agent": ("vraie, saut logique", "warn"),
     "refute": ("réfutée", "bad"),
     "non_verifie": ("non vérifiée", "warn"),

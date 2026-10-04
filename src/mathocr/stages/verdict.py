@@ -118,8 +118,14 @@ def decide(
     if lean.run is not None and lean.assembly_ok and not lean.axioms_ok:
         blocking.append("Axiomes non autorisés dans la démonstration assemblée.")
 
-    lean_ok = {c.step_id for c in lean.steps if c.status in ("verifie_elementaire", "hypothese", "definition",
-                                                           "non_formalise")}
+    lean_ok = {c.step_id for c in lean.steps if c.status in ("verifie_elementaire", "verifie_theoreme", "hypothese",
+                                                           "definition", "non_formalise")}
+    for c in lean.steps:
+        if c.status == "verifie_theoreme":
+            remarks.append(f"Étape {c.step_id} justifiée par un {c.closed_by} — vérifié dans Lean.")
+        elif c.status == "verifie_elementaire" and c.closed_by and "niveau 2" in c.closed_by:
+            remarks.append(f"Étape {c.step_id} admise sans justification écrite : Lean la démontre par un "
+                           f"argument élémentaire.")
     for o in st.observations:
         tag = ", ".join(o.step_ids)
         if o.severity in ("lacune", "erreur") and not (o.step_ids and set(o.step_ids) <= lean_ok):

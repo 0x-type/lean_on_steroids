@@ -144,6 +144,10 @@ def _run(
         if fm is None:
             from .stages.agents import formalize
             fm = formalize(ref, tr, st, cfg, memory=memory)
+        from .theoremes import citations_ancrees
+        cites = citations_ancrees(st, tr)
+        for f in fm.steps:
+            f.cites = cites.get(f.step_id, [])
         _save(out_dir, "3_formalisation.json", fm)
 
         set_stage("lean")
@@ -276,7 +280,7 @@ def _remember(memory, st: ProofStructure, fm: Formalization, lean, fid) -> None:
         if f.origin == "agent" and f.step_id in good and f.step_id not in bad \
                 and status.get(f.step_id) not in ("erreur_formalisation", None):
             memory.put_step(memory_key(st, fm, f.step_id), f, st.step(f.step_id).statement)
-        if (f.agent_proof and status.get(f.step_id) == "verifie_agent") or \
+        if (f.agent_proof and status.get(f.step_id) in ("verifie_agent", "verifie_theoreme", "verifie_elementaire")) or \
                 (f.agent_refutation and status.get(f.step_id) == "refute"):
             binders = " ".join(f"({n} : {t})" for n, t in _binders(st, fm, f.step_id))
             memory.put_tier2(StepMemory.tier2_key(binders, f.claim or ""), f.agent_proof, f.agent_refutation)

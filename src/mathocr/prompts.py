@@ -73,6 +73,10 @@ chaîne) ou nécessairement utilisées. N'ajoute pas de dépendance que la copie
 Signale un connecteur injustifié, une quantification manquante, une étape non justifiée. Ne signale pas une \
 erreur de calcul par intuition : c'est Lean qui tranchera.
 - `unmapped_lines` : lignes non rattachées (titres, ratures).
+- `citations` : pour une étape que l'élève justifie EXPLICITEMENT par un théorème nommé (« d'après le TVI », \
+« on applique Rolle »…), `theoreme` = sa clé dans la liste ci-dessous et `extrait` = les mots exacts de la \
+copie qui le nomment. N'ajoute jamais un théorème que l'élève n'a pas écrit, même s'il serait nécessaire. \
+Théorèmes reconnus : {theoremes}
 
 Format de `statement` (il est lu par un programme) : LaTeX seul, sans phrase française, avec ces formes :
 - définition : `P(n) : <formule>` (pas de domaine, pas de ∀ devant) ;
@@ -129,7 +133,7 @@ Définitions disponibles :
 ```
 L'automatisation élémentaire (norm_num, ring, omega, linarith, simp) a échoué. Réponds avec `proof` \
 (bloc tactique après `by`) si l'énoncé est vrai sous ces hypothèses, ou `refutation` (bloc tactique \
-prouvant `¬ (∀ {binders}, {claim})`) s'il est faux. Laisse l'autre champ vide."""
+prouvant `¬ (∀ {binders}, {claim})`) s'il est faux. Laisse l'autre champ vide.{cite}"""
 
 BACKTRANSLATE_SYSTEM = """Tu lis des énoncés Lean 4 et tu les réécris en mathématiques usuelles (LaTeX), \
 fidèlement, sans rien améliorer. Tu ne connais pas la copie d'origine."""

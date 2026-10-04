@@ -208,7 +208,9 @@ class LeanGenerator:
             if uf is None or uf.role in ("def", "none"):
                 continue
             args.append(self.term(u, step.scope))
-        return f"({NS}.{sid} {' '.join(args)})" if args else f"{NS}.{sid}"
+        # Étape fermée au niveau 2 : l'assemblage passe par cette preuve (même énoncé, mêmes hypothèses).
+        name = f"{NS}.{sid}_agent" if f.agent_proof else f"{NS}.{sid}"
+        return f"({name} {' '.join(args)})" if args else name
 
     # -- preuves ---------------------------------------------------------------------
 
@@ -279,7 +281,9 @@ class LeanGenerator:
 
     def generate(self, *, probes: bool = True, fingerprints: bool = True) -> GeneratedLean:
         w = _Writer()
-        for imp in self.ref.lean_imports:
+        from ..theoremes import imports_pour
+        cited = sorted({k for f in self.fm.steps for k in f.cites})
+        for imp in dict.fromkeys(list(self.ref.lean_imports) + imports_pour(cited)):
             w.emit(f"import {imp}")
         w.emit("import MathOCRCheck.Auto")
         w.emit("")
@@ -404,4 +408,43 @@ class LeanGenerator:
         all_decls = [s.decl for s in w.segments if s.decl and s.kind not in ("def", "reference", "eval")]
         for t in dict.fromkeys(theorems + all_decls):
             w.block("axioms", None, t, f"#print axioms {t}")
+
+        # Théorèmes de bibliothèque utilisés par chaque preuve de niveau 2 : une étape n'est « justifiée par
+        # un théorème cité » que si la preuve n'en utilise pas d'autre (voir mathocr.theoremes).
+        agents = [s.decl for s in w.segments if s.kind == "agent_proof" and s.decl]
+        if agents:
+            w.block("uses", None, None, _USES_HELPER + "\n".join(
+                f"#eval mathocrReportUses `{d}" for d in agents) + "\n")
         return GeneratedLean("\n".join(w.lines) + "\n", w.segments, self.violations, theorems)
+
+
+# Code de confiance (écrit ici, pas par un agent) : liste les théorèmes importés qu'une preuve utilise
+# directement, en traversant les auxiliaires créés dans le fichier ; les instances de classes sont ignorées.
+_USES_HELPER = """open Lean in
+partial def mathocrUsedTheorems (env : Environment) (n : Name) : Array (Name × Name) := Id.run do
+  let mut seen : NameSet := {}
+  let mut todo := #[n]
+  let mut out := #[]
+  while todo.size > 0 do
+    let c := todo.back!
+    todo := todo.pop
+    if seen.contains c then continue
+    seen := seen.insert c
+    let some ci := env.find? c | continue
+    let some v := ci.value? (allowOpaque := true) | continue
+    for d in v.getUsedConstants do
+      match env.getModuleIdxFor? d with
+      | none => todo := todo.push d
+      | some i =>
+        if let some (.thmInfo _) := env.find? d then
+          if !(Lean.Meta.isInstanceCore env d) then
+            out := out.push (d, env.header.moduleNames[i.toNat]!)
+  return out
+
+open Lean Elab Command in
+def mathocrReportUses (n : Name) : CommandElabM Unit := do
+  let env ← getEnv
+  let uses := mathocrUsedTheorems env n
+  logInfo m!"mathocr:uses {n} {String.intercalate \" \" (uses.toList.map fun (d, m) => s!\"{d}@{m}\")}"
+
+"""

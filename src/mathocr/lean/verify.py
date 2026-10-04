@@ -38,6 +38,25 @@ def _trace(seg: Segment, msgs: list[LeanMessage], prefix: str) -> str | None:
     return None
 
 
+def _judge_agent_proof(check: StepCheck, cites: list[str], used: list[tuple[str, str]] | None) -> None:
+    """Preuve de niveau 2 valide : saut logique, sauf si elle ne s'appuie que sur le théorème cité par
+    l'élève (étape justifiée) ou n'utilise aucun théorème non élémentaire (étape élémentaire)."""
+    from ..theoremes import ACCEPTER_PREUVE_ELEMENTAIRE, juger_usages
+
+    if used is None:  # liste des usages absente : prudence
+        return
+    ok, why = juger_usages(cites, used)
+    check.uses = [n for n, _ in used]
+    if ok and cites:
+        check.status = "verifie_theoreme"
+        check.closed_by = f"théorème cité par l'élève : {why}"
+    elif ok and ACCEPTER_PREUVE_ELEMENTAIRE:
+        check.status = "verifie_elementaire"
+        check.closed_by = "preuve élémentaire proposée au niveau 2 (aucun théorème non élémentaire)"
+    elif not ok:
+        check.closed_by = f"preuve proposée par un agent (niveau 2) : {why}"
+
+
 def interpret(
     gen: GeneratedLean,
     msgs: list[LeanMessage],
@@ -62,6 +81,13 @@ def interpret(
         b = _NO_AXIOMS_RE.search(m.text)
         if b:
             axioms[b.group(1)] = []
+
+    # Théorèmes utilisés par les preuves de niveau 2 : « mathocr:uses <décl> nom@module … »
+    uses: dict[str, list[tuple[str, str]]] = {}
+    for m in msgs:
+        if m.severity == "information" and m.text.startswith("mathocr:uses "):
+            parts = m.text.split()
+            uses[parts[1]] = [tuple(x.rsplit("@", 1)) for x in parts[2:] if "@" in x]
 
     # Rattacher les messages aux étapes
     for m in msgs:
@@ -116,6 +142,7 @@ def interpret(
             if agent and not _errors(agent, msgs) and axioms_ok(axioms, agent.decl):
                 check.status = "verifie_agent"
                 check.closed_by = "preuve proposée par un agent (niveau 2)"
+                _judge_agent_proof(check, f.cites, uses.get(agent.decl))
         # Réfutation (automatique ou proposée par un agent)
         for kind in ("refutation", "agent_refutation"):
             rs = by_kind.get((kind, step.id))

@@ -136,3 +136,45 @@ def test_doubt_that_cannot_change_verdict_is_cleared_by_lean(tmp_path):
                 PipelineConfig(workspace=ROOT / "lean_workspace", memory_dir=None),
                 transcription=p, structure=EX / "fixtures" / "structure.json")
         assert r.verdict.verdict == expected, (alt, r.verdict.blocking_issues)
+
+
+def _tvi_case(proof: str):
+    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+                                 StepFormal)
+    ref = ReferenceStatement(exercise_id="tvi", statement_latex="", lean_statement="True",
+                             lean_imports=["MathOCRCheck.Prelude", "Mathlib.Topology.Order.IntermediateValue",
+                                           "Mathlib.Topology.Instances.Real.Lemmas"])
+    st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
+        ProofStep(id="s1", kind="affirmation", statement="d'après le TVI, f s'annule",
+                  source=[SourceRef(line_id="p1.L01", excerpt="TVI")])])
+    claim = "∀ (f : ℝ → ℝ), Continuous f → f 0 < 0 → 0 < f 1 → ∃ c, f c = 0"
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop", claim=claim, agent_proof=proof,
+                                                    cites=["tvi"])])
+    return ref, st, fm
+
+
+@needs_lean
+@pytest.mark.lean
+@pytest.mark.parametrize("proof,expected", [
+    # s'appuie sur le théorème cité : étape justifiée
+    ("intro f hf h0 h1\nobtain ⟨c, hc⟩ := intermediate_value_univ 0 1 hf "
+     "(show (0:ℝ) ∈ Set.Icc (f 0) (f 1) from ⟨h0.le, h1.le⟩)\nexact ⟨c, hc⟩", "verifie_theoreme"),
+    # passe par un autre grand théorème (connexité), non cité : saut logique
+    ("intro f hf h0 h1\nobtain ⟨c, -, hc⟩ := isPreconnected_univ.intermediate_value (Set.mem_univ 0) "
+     "(Set.mem_univ 1) hf.continuousOn (show (0:ℝ) ∈ Set.Icc (f 0) (f 1) from ⟨h0.le, h1.le⟩)\nexact ⟨c, hc⟩",
+     "verifie_agent"),
+])
+def test_cited_theorem_is_accepted_only_if_used_alone(tmp_path, monkeypatch, proof, expected):
+    from mathocr import theoremes
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+
+    cat = theoremes.Catalogue({"tvi": theoremes.Theoreme(
+        cle="tvi", nom="théorème des valeurs intermédiaires", alias=["TVI"],
+        lemmes=["intermediate_value_univ", "intermediate_value_Icc"], compagnons=["ordered_connected_space"],
+        imports=["Mathlib.Topology.Order.IntermediateValue"], verifie=True)},
+        ["Mathlib.Topology", "Mathlib.Analysis"], {"Continuous.continuousOn"})
+    monkeypatch.setattr(theoremes, "charger", lambda path=None: cat)
+    ref, st, fm = _tvi_case(proof)
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    assert lean.steps[0].status == expected, lean.steps[0]

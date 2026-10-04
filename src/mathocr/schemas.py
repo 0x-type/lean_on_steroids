@@ -139,6 +139,13 @@ class SourceRef(BaseModel):
     excerpt: str  # sous-chaîne exacte de la ligne transcrite
 
 
+class Citation(BaseModel):
+    """Théorème que l'élève invoque pour justifier l'étape (clé du catalogue + mots exacts de la copie)."""
+
+    theoreme: str
+    extrait: str
+
+
 class ProofStep(BaseModel):
     id: str
     kind: StepKind
@@ -153,6 +160,7 @@ class ProofStep(BaseModel):
     implicit: bool = False
     implicit_reason: Literal["", "chaine_egalites", "depliage_definition", "schema_recurrence"] = ""
     source: list[SourceRef] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)  # théorèmes cités par l'élève pour cette étape
 
 
 class Scope(BaseModel):
@@ -236,6 +244,9 @@ class StepFormal(BaseModel):
     # (niveau 2). Elle ne peut pas changer l'énoncé de l'étape.
     agent_proof: str | None = None
     agent_refutation: str | None = None
+    # Théorèmes cités par l'élève et retrouvés dans la copie (clés du catalogue) : la preuve de niveau 2
+    # peut s'appuyer dessus, et seulement sur eux.
+    cites: list[str] = Field(default_factory=list)
     # Qui a produit cette formalisation : code (traduction déterministe), agent,
     # mémoire (étape déjà validée sur une autre copie), fixture.
     origin: str = ""
@@ -276,6 +287,7 @@ class StepCheck(BaseModel):
     decl: str
     status: Literal[
         "verifie_elementaire",  # prouvé par l'automatisation élémentaire à partir des seules dépendances
+        "verifie_theoreme",  # prouvé avec le théorème cité par l'élève (et seulement lui) : justifié
         "verifie_agent",  # prouvé seulement avec une preuve fournie par un agent : saut logique
         "refute",  # la négation est démontrée dans Lean (contre-exemple certifié)
         "non_verifie",  # ni prouvé ni réfuté
@@ -286,6 +298,7 @@ class StepCheck(BaseModel):
     ]
     closed_by: str | None = None
     counterexample: str | None = None
+    uses: list[str] = Field(default_factory=list)  # théorèmes non élémentaires utilisés par la preuve de niveau 2
     independent_of_deps: bool | None = None  # vrai si l'étape se prouve sans ses dépendances déclarées
     messages: list[LeanMessage] = Field(default_factory=list)
     lean_snippet: str = ""
