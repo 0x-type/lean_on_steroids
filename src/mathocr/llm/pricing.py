@@ -95,8 +95,18 @@ def record(**kw) -> None:
         led.add(**kw)
 
 
+# Suivi de l'avancement (interface web) : fonction appelée à chaque changement d'étape, propre au fil courant.
+stage_listener: contextvars.ContextVar = contextvars.ContextVar("mathocr_stage_listener", default=None)
+
+
 def set_stage(stage: str) -> None:
     led = _current.get()
     if led is not None:
         led.stage = stage
     _stage.set(stage)
+    listener = stage_listener.get()
+    if listener is not None:
+        try:
+            listener(stage)
+        except Exception:  # noqa: BLE001 — l'affichage ne doit jamais interrompre une correction
+            pass

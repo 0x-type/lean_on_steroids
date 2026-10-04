@@ -45,8 +45,14 @@ def decide(
     remarks: list[str] = []
     reasons: list[str] = []
 
+    auto = ref.exercise_id.startswith("auto_")
     if not ref.validated_by:
-        blocking.append("La formalisation de l'énoncé n'a pas été validée par un enseignant.")
+        blocking.append("L'énoncé lu sur la capture n'a pas passé les contrôles (Lean et relecture indépendante) : "
+                        "vérifiez sa formalisation." if auto else
+                        "La formalisation de l'énoncé n'a pas été validée par un enseignant.")
+    elif auto:
+        remarks.append("Énoncé formalisé automatiquement à partir de la capture : compilé par Lean et jugé fidèle "
+                       "par une relecture indépendante.")
     for v in lean.policy_violations:
         blocking.append(f"Fragment Lean refusé ({v.where}) : « {v.token} » — {v.detail}.")
     if lean.run is None and not lean.policy_violations:

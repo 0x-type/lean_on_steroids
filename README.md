@@ -31,6 +31,33 @@ Résultat attendu de `mathocr demo` :
 | `lecture_ambigue` — « (2n+1) » pourrait se lire « (2n-1) » | examen nécessaire (lecture alternative plausible qui change l'étape) |
 | `saut_logique` — hérédité « évidente », sans calcul | examen nécessaire (étape vraie mais ni prouvée élémentairement ni réfutée) |
 
+## Interface web
+
+```sh
+export OPENROUTER_API_KEY=…
+mathocr web                    # http://127.0.0.1:8000/
+mathocr web --hote 0.0.0.0 --port 8080   # exposée au réseau (derrière un proxy HTTPS)
+```
+
+1. **L'énoncé** : une capture d'écran ou une photo de l'exercice, n'importe lequel. Il est écrit en Lean
+   par le modèle de raisonnement, compilé par Lean (deux reprises en cas d'erreur), puis relu avec l'image
+   par le juge (autre fournisseur). Un énoncé qui ne passe pas ces deux contrôles n'est pas validé : la
+   correction ne peut alors conclure ni « vérifié » ni « erreur établie ». On peut aussi choisir un exercice
+   préparé (`examples/collecte/exercices`).
+2. **La copie** : les photos des pages, dans l'ordre. L'avancement s'affiche étape par étape, puis le
+   verdict, le retour à l'élève et le rapport complet.
+
+Les fichiers reçus sont rangés dans `runs/web/` (énoncés formalisés dans `runs/web/exercices/`). Le serveur
+n'utilise que la bibliothèque standard ; deux corrections au plus tournent en même temps (Lean est lourd).
+
+## Profil de modèles par défaut (M)
+
+Sans option, `mathocr corriger` et `mathocr web` utilisent le profil M, retenu après essais : Opus 5.5
+pour la lecture, l'arbitrage, la structure et la traduction en Lean (là où une erreur changerait le verdict
+sans que Lean la voie) ; GPT-6 Luna pour le niveau 2, Luna-Pro pour la reprise et l'assemblage (Lean
+contrôle tout) ; Gemini 3.1 Pro, effort moyen, comme juge. Environ 0,40–0,80 $ et 3 à 6 minutes par copie.
+Tout moteur donné sur la ligne de commande l'emporte ; `--profil aucun` désactive le profil.
+
 ## Une seule clé : OpenRouter
 
 ```sh

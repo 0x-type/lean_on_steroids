@@ -217,3 +217,51 @@ les hypothèses de l'énoncé, les variables de portée puis les étapes dont el
 
 Réponds avec `possible` et `preuve` : le bloc tactique qui suit `by` (le but est l'énoncé ci-dessus), \
 sans commentaire ni sorry. Si possible = false, mets dans `manque` ce qui manque à la copie."""
+
+
+# ---------------------------------------------------------------------------
+# Énoncé lu sur une capture d'écran (exercice quelconque, hors catalogue)
+# ---------------------------------------------------------------------------
+
+EXERCISE_SYSTEM = """Tu formalises en Lean 4 (Mathlib) l'énoncé d'un exercice de mathématiques photographié ou \
+capturé à l'écran. Tu recopies l'énoncé fidèlement, puis tu écris CE QU'IL FAUT DÉMONTRER, ni plus ni moins : \
+mêmes hypothèses, même conclusion, mêmes ensembles (ℕ, ℤ, ℝ…). Tu ne simplifies pas, tu ne renforces pas, tu \
+n'ajoutes aucune hypothèse absente de l'énoncé. Tu ne démontres rien."""
+
+EXERCISE_TASK = """Image(s) jointe(s) : l'énoncé de l'exercice.
+
+Réponds avec :
+- `titre` : quelques mots (« Fonction de carré constant », « Somme des diviseurs »).
+- `statement_latex` : l'énoncé recopié mot pour mot, en français, maths en $…$.
+- `objets` : les objets que l'énoncé fixe (« Soit f : ℝ → ℝ continue… ») : `nom` (identifiant Lean), `type` \
+(type Lean, ex. `ℝ → ℝ`, `ℕ`), `latex`. Liste vide si l'énoncé ne fixe rien.
+- `hypotheses` : les hypothèses sur ces objets : `nom` (commence par h_, ex. h_cont), `lean` (proposition Lean qui \
+n'utilise que les objets), `latex`.
+- `but_lean` : la proposition Lean à démontrer, qui peut utiliser les objets (mais pas les noms d'hypothèses). Si \
+l'exercice a plusieurs questions à démontrer, leur conjonction (A ∧ B ∧ C), dans l'ordre.
+- `lean_imports` : modules Mathlib nécessaires, en plus de MathOCRCheck.Prelude. Préfère ceux de cette liste, \
+disponibles sans compilation : {imports}
+- `lean_opens` : espaces de noms ouverts (ex. Finset, Filter, Topology).
+- `remarques` : ambiguïtés de l'énoncé et choix faits (ex. « ℕ commence à 0 », « question de calcul non \
+formalisée »). Une question qui demande un calcul ou une construction, et non une démonstration, se formalise par \
+la propriété du résultat attendu si l'énoncé le donne ; sinon signale-la ici.
+
+Règles Lean : `Real.sqrt`, `Real.exp`, `Real.log`, `Continuous f`, `Set.Icc a b`, `Finset.range n`, \
+`Nat.Prime p`, `a ∣ b`, `Nat.gcd a b`, `Tendsto u atTop (𝓝 l)`. Écris `(2:ℝ)` quand le type n'est pas évident. \
+Continuité ou limites sur ℝ : ajoute Mathlib.Topology.Instances.Real.Lemmas aux imports.{erreurs}"""
+
+CHECK_EXERCISE_SYSTEM = """Tu contrôles la formalisation Lean d'un énoncé d'exercice, sans complaisance. Tu compares \
+l'énoncé de l'image à la proposition Lean : mêmes objets, mêmes hypothèses, même conclusion. Une hypothèse ajoutée, \
+une conclusion affaiblie ou renforcée, un ensemble changé (ℕ au lieu de ℤ, intervalle ouvert au lieu de fermé) \
+rendent la formalisation infidèle. Des choix de notation sans effet sur le sens ne comptent pas."""
+
+CHECK_EXERCISE_TASK = """Énoncé : voir l'image jointe.
+
+Formalisation proposée (Lean 4, Mathlib) :
+```lean
+{lean}
+```
+Remarques du formalisateur : {remarques}
+
+Réponds `fidele` = vrai seulement si la proposition Lean dit exactement ce que l'énoncé demande de démontrer ; \
+`explication` en une ou deux phrases (en cas d'écart, lequel)."""

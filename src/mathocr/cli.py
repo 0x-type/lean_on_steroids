@@ -132,6 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     ph = sub.add_parser("photo", help="contrôler la qualité de photos (local, gratuit)")
     ph.add_argument("images", nargs="+", type=Path)
 
+    w = sub.add_parser("web", help="interface web : capture de l'énoncé, puis photos de la copie")
+    w.add_argument("--hote", default="127.0.0.1", help="adresse d'écoute (0.0.0.0 pour l'exposer au réseau)")
+    w.add_argument("--port", type=int, default=8000)
+    w.add_argument("--profil", default="M", choices=sorted(PROFILS) + ["aucun"])
+    common(w)
+
     d = sub.add_parser("demo", help="exemple fourni + variantes (hors-ligne)")
     d.add_argument("--sortie", type=Path, default=ROOT / "runs" / "demo")
     common(d)
@@ -154,9 +160,17 @@ def main(argv: list[str] | None = None) -> int:
         a.juge, a.sans_niveau2, a.reformuler, a.cache, a.verbose = None, True, False, ".", False
         a.mode_ocr, a.ocr_fort, a.audit, a.effort_ocr = "ensemble", [], 0.0, "high"
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(levelname)s %(message)s")
-    if a.cmd == "corriger" and a.profil != "aucun":
+    if a.cmd in ("corriger", "web") and a.profil != "aucun":
         _apply_profile(a, PROFILS[a.profil])
     cfg = _cfg(a)
+
+    if a.cmd == "web":
+        import os
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            print("OPENROUTER_API_KEY n'est pas défini : les modèles d'IA ne pourront pas être appelés.")
+        from .web.server import serve
+        serve(a.hote, a.port, lambda: _cfg(a))
+        return 0
 
     if a.cmd == "evaluer":
         return _evaluate(a, cfg)
