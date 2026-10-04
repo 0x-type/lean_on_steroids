@@ -587,7 +587,8 @@ def _wrap(s: str) -> str:
 
 def variable_types(ref: ReferenceStatement, st: ProofStructure) -> dict[str, str]:
     types: dict[str, str] = {}
-    for m in re.finditer(r"∀\s*\(?\s*([A-Za-z])\s*:\s*(ℕ|ℤ|ℚ|ℝ)", ref.lean_statement):
+    # (f : ℝ → ℝ) est une fonction, pas un nombre : elle n'est pas typée ici (f(x) n'est pas un produit).
+    for m in re.finditer(r"∀\s*\(?\s*([A-Za-z])\s*:\s*(ℕ|ℤ|ℚ|ℝ)(?!\s*→)", ref.lean_statement):
         types.setdefault(m.group(1), m.group(2))
     for s in st.steps:
         for m in re.finditer(r"([A-Za-z])\s*\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ)", s.statement):

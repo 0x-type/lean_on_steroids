@@ -190,7 +190,7 @@ def axioms_ok(axioms: dict[str, list[str]], decl: str | None) -> bool:
 
 
 def _is_statement_error(m: LeanMessage) -> bool:
-    t = m.text
+    t = m.text.lower()  # Lean récent : « Unknown identifier »
     return any(k in t for k in ("unknown identifier", "unknown constant", "type mismatch", "failed to synthesize",
                                 "unexpected token", "expected", "function expected", "elaboration"))
 
