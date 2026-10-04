@@ -55,6 +55,10 @@ class PipelineConfig:
     # Arbitrage des lectures douteuses (regarde l'image) : None = reasoning_engine. Permet de garder un modèle
     # fort sur l'image quand le raisonnement texte passe à un modèle bon marché (Lean contrôle ce dernier).
     arbiter_engine: str | None = None
+    # Reprise de niveau 2 et assemblage : Lean contrôle tout, un modèle moins cher suffit. None = reasoning_engine.
+    fallback_engine: str | None = None
+    assembly_engine: str | None = None
+    judge_effort: str = "high"  # effort de raisonnement du juge (rétro-traduction)
     cache_dir: Path = Path("runs/.cache")
     memory_dir: Path | None = Path("runs/.memoire")  # None = pas de mémoire partagée
     photo_gate: bool = True  # refuser localement les photos inutilisables avant tout appel payant
@@ -185,8 +189,9 @@ def _run(
         lean, evals = verify(ref, st, fm, scfg, out_dir)
         lean_seconds += lean.run.seconds if lean.run else 0.0
         left = [c.step_id for c in lean.steps if c.status == "non_verifie"][:cfg.tier2_fallback_max]
-        if left and cheap != cfg.reasoning_engine and cfg.tier2_fallback_max > 0:
-            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=cfg.reasoning_engine, only=set(left))
+        strong = cfg.fallback_engine or cfg.reasoning_engine
+        if left and cheap != strong and cfg.tier2_fallback_max > 0:
+            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=strong, only=set(left))
             _save(out_dir, "3b_formalisation_niveau2.json", fm)
             lean, evals = verify(ref, st, fm, scfg, out_dir)
             lean_seconds += lean.run.seconds if lean.run else 0.0

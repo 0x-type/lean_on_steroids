@@ -456,6 +456,7 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
     if all(f.step_id in skip for f in fm.steps if f.role in ("prop", "hyp") and f.claim):
         return []
     eng = _engine(cfg, cfg.judge_engine)
+    effort = getattr(cfg, "judge_effort", "high")
     defs = "\n".join(f"{f.def_name} " + " ".join(f"({b.name} : {b.type})" for b in f.def_binders)
                      + f" := {f.def_body}" for f in fm.steps if f.role == "def") or "(aucune)"
     todo = [f for f in fm.steps if f.role in ("prop", "hyp") and f.claim and f.step_id not in skip]
@@ -463,7 +464,7 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
     if ref is not None and ref.contexte:
         defs = f"Objets et hypothèses de l'énoncé : {ref.contexte.decrire()}\n{defs}"
     back = eng.structured(prompts.BACKTRANSLATE_SYSTEM, prompts.BACKTRANSLATE_TASK.format(defs=defs, claims=claims),
-                          [], WireBacks)
+                          [], WireBacks, effort=effort)
     bmap = {b.step_id: b.latex for b in back.items}
     # La référence est ce que l'élève a écrit (extraits de la transcription), pas la reformulation de
     # l'étape par l'agent de structure : si celle-ci « répare » la copie, la comparer à la relecture
@@ -479,7 +480,7 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
     cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(
         pairs=pairs, statement=ref.statement_latex if ref else "(non fourni)",
         contexte=(", ".join(f"{h.latex or h.lean}" for h in ref.contexte.hypotheses) + " ; objets : "
-                  + ", ".join(o.latex or o.nom for o in ref.contexte.objets)) if ref and ref.contexte else "(aucun)"), [], WireCmps)
+                  + ", ".join(o.latex or o.nom for o in ref.contexte.objets)) if ref and ref.contexte else "(aucun)"), [], WireCmps, effort=effort)
     out = []
     for c in cmp_.items:
         out.append(FidelityCheck(step_id=c.step_id, kind="retrotraduction", ok=c.equivalent,
@@ -544,7 +545,8 @@ def assemble(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lea
     kit = kit or "(aucun)"
     task = prompts.ASSEMBLE_TASK.format(enonce=ref.lean_statement, contexte=_contexte(ref), kit=kit,
                                         etapes="\n".join(lines), signatures="\n".join(sigs))
-    out = _engine(cfg).structured(prompts.ASSEMBLE_SYSTEM, task, [], WireAssemblage)
+    eng = _engine(cfg, getattr(cfg, "assembly_engine", None))
+    out = eng.structured(prompts.ASSEMBLE_SYSTEM, task, [], WireAssemblage)
     if not out.possible or not out.preuve.strip():
         return fm, out.manque or "l'agent n'a pas pu assembler le raisonnement"
     proof = _admissible(out.preuve, "assemblage (agent)")
@@ -555,7 +557,7 @@ def assemble(ref: ReferenceStatement, st: ProofStructure, fm: Formalization, lea
     # Une reprise si Lean refuse l'assemblage (nom de lemme, syntaxe) : on renvoie ses messages à l'agent.
     errs = _assembly_errors(ref, st, fm, cfg)
     if errs:
-        out2 = _engine(cfg).structured(
+        out2 = eng.structured(
             prompts.ASSEMBLE_SYSTEM, task + "\n\nTa preuve précédente :\n" + proof
             + "\n\nLean la refuse :\n" + "\n".join(errs)
             + "\n\nCorrige la syntaxe ou les noms de lemmes, sans changer le raisonnement de l'élève.",

@@ -50,6 +50,8 @@ def _cfg(a) -> PipelineConfig:
     return PipelineConfig(workspace=Path(a.lean_workspace), sandbox=a.sandbox, lean_timeout_s=a.delai,
                           lean_memory_mb=a.memoire, ocr_engines=a.ocr or [], reasoning_engine=a.raisonnement,
                           arbiter_engine=getattr(a, "arbitre", None),
+                          fallback_engine=getattr(a, "secours", None), assembly_engine=getattr(a, "assemblage", None),
+                          judge_effort=getattr(a, "effort_juge", "high"),
                           judge_engine=a.juge, tier2=not a.sans_niveau2, polish_feedback=a.reformuler,
                           cache_dir=Path(a.cache), ocr_mode=a.mode_ocr, ocr_strong=a.ocr_fort or [],
                           audit_rate=a.audit, ocr_effort=a.effort_ocr, tier2_engine=getattr(a, "niveau2", None),
@@ -67,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--memoire", type=int, default=8192, help="mémoire maximale de Lean (Mo)")
         p.add_argument("--ocr", action="append", help="moteur OCR (répétable) : anthropic:…, openai:…, gemini:…, mathpix")
         p.add_argument("--raisonnement", help="moteur des agents (structure, formalisation, arbitrage, niveau 2)")
+        p.add_argument("--secours", help="moteur de reprise du niveau 2 ; défaut : --raisonnement")
+        p.add_argument("--assemblage", help="moteur d'assemblage du raisonnement ; défaut : --raisonnement")
+        p.add_argument("--effort-juge", default="high", choices=["low", "medium", "high"])
         p.add_argument("--arbitre", help="moteur d'arbitrage des lectures douteuses (image) ; défaut : --raisonnement")
         p.add_argument("--juge", help="moteur de rétro-traduction (de préférence un autre fournisseur)")
         p.add_argument("--sans-niveau2", action="store_true")
