@@ -166,7 +166,10 @@ la même étape récrite par un autre agent (aide à lire la copie : contexte d'
 haut, mais elle peut être fausse) ; `relecture` = lecture indépendante de la formalisation Lean.
 Réponds `equivalent` = vrai seulement si la relecture affirme exactement ce que dit la COPIE. Si la \
 reformulation ou la relecture ajoute, retire ou corrige quelque chose par rapport à la copie (exposant, \
-borne, signe, terme, quantificateur), réponds faux et dis quoi. Explique brièvement.
+borne, signe, terme, quantificateur), réponds faux et dis quoi. La justification écrite par l'élève \
+(« car … », « d'après … », « on applique … ») ne fait pas partie de l'affirmation : son absence dans la \
+relecture n'est pas une différence ; une précision sans effet mathématique (« sur ℝ » quand tout est réel) \
+non plus. Explique brièvement.
 {pairs}"""
 
 FEEDBACK_SYSTEM = """Tu reformules un retour de correction destiné à un élève (français, bienveillant, \
