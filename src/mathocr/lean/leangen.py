@@ -236,6 +236,24 @@ class LeanGenerator:
             out.append((f"h_{u}", self._dep_type(u, step.scope)))
         return out
 
+    def _refutation_binders(self, sid: str) -> list[tuple[str, str]]:
+        """Hypothèses sous lesquelles une étape peut être déclarée FAUSSE : ses dépendances, plus toutes les
+        hypothèses des cas où elle se trouve (« pour x ∈ [0,1[ … »).
+
+        Démontrer une étape avec moins d'hypothèses est sans danger ; la réfuter avec moins d'hypothèses ne
+        l'est pas (cas réel B07 : |xⁿ − f(x)| = xⁿ, vraie pour x ∈ [0,1[, « réfutée » en x = −1)."""
+        step = self.st.step(sid)
+        out = self._step_binders(sid)
+        have = {n for n, _ in out}
+        for sc in self._scope_chain(step.scope):
+            for a in self._assumptions(sc):
+                fa = self._formal(a)
+                if f"h_{a}" in have or fa is None or not fa.claim or fa.role in ("def", "none"):
+                    continue
+                out.append((f"h_{a}", self._dep_type(a, step.scope)))
+                have.add(f"h_{a}")
+        return out
+
     # -- termes d'assemblage -------------------------------------------------------------
 
     def term(self, sid: str, at_scope: str) -> str:
@@ -320,7 +338,7 @@ class LeanGenerator:
     def _refutation_proof(self, sid: str) -> tuple[str, str] | None:
         """(énoncé nié, preuve) : tente des contre-exemples aux points d'échantillonnage."""
         f = self.fm.of(sid)
-        binders = self._step_binders(sid)
+        binders = self._refutation_binders(sid)
         claim = f.claim
         vars_ = [(n, t) for n, t in binders if not n.startswith("h_")]
         hyps = [(n, t) for n, t in binders if n.startswith("h_")]
@@ -423,7 +441,8 @@ class LeanGenerator:
                         f"theorem {step.id}_agent {bsrc} :\n    {f.claim} := by\n{body}\n")
             if f.agent_refutation:
                 body = _tactics(f.agent_refutation)
-                stmt = f"¬ (∀ {bsrc}, {f.claim})" if bsrc else f"¬ ({f.claim})"
+                rsrc = " ".join(f"({n} : {t})" for n, t in self._refutation_binders(step.id))
+                stmt = f"¬ (∀ {rsrc}, {f.claim})" if rsrc else f"¬ ({f.claim})"
                 w.block("agent_refutation", step.id, f"{NS}.{step.id}_refutation_agent",
                         f"theorem {step.id}_refutation_agent : {stmt} := by\n{body}\n")
             if probes and f.uses and not step.implicit:

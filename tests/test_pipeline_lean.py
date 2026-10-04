@@ -272,3 +272,27 @@ def test_agent_assembly_axioms_are_the_ones_checked(tmp_path):
     ref, st, fm = _glue_case("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nlinarith")
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     assert lean.assembly_ok and lean.axioms_ok  # l'assemblage automatique (échoué) ne compte plus
+
+
+@needs_lean
+@pytest.mark.lean
+def test_refutation_respects_the_case_hypothesis(tmp_path):
+    """Cas réel (B07) : « pour x ∈ [0,1[ … |xⁿ − f(x)| = xⁿ » était « réfutée » en x = −1, car l'hypothèse
+    du cas n'était pas passée à la réfutation. Une étape vraie dans son cas n'est jamais déclarée fausse."""
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, ScopeFormal,
+                                 SourceRef, StepFormal)
+    ref = ReferenceStatement(exercise_id="cas", statement_latex="", lean_statement="True")
+    src = [SourceRef(line_id="p1.L01", excerpt="x")]
+    st = ProofStructure(
+        scopes=[{"id": "cas", "parent": "global", "variables": ["x"], "assumptions": ["s1"]}],
+        pattern={"kind": "aucun"},
+        steps=[ProofStep(id="s1", kind="hypothese", scope="cas", statement="x ∈ [0,1[", source=src),
+               ProofStep(id="s2", kind="calcul", scope="cas", statement="|x| = x", source=src)])
+    refutation = "intro h\nhave := h (-1)\nnorm_num at this"  # valable seulement sans l hypothèse du cas
+    fm = Formalization(scopes=[ScopeFormal(scope_id="cas", binders=[{"name": "x", "type": "ℝ"}])], steps=[
+        StepFormal(step_id="s1", role="hyp", claim="x ∈ Set.Ico (0:ℝ) 1"),
+        StepFormal(step_id="s2", role="prop", claim="|x| = x", agent_refutation=refutation)])
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    assert next(c for c in lean.steps if c.step_id == "s2").status != "refute"

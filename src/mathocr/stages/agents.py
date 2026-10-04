@@ -335,12 +335,14 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
             continue
         f = fm.of(c.step_id)
         binders = " ".join(f"({n} : {t})" for n, t in gen._step_binders(c.step_id))
+        ref_binders = " ".join(f"({n} : {t})" for n, t in gen._refutation_binders(c.step_id))
         hit = memory.get_tier2(StepMemory.tier2_key(binders, f.claim or "")) if memory is not None else None
         if hit is not None:
             f.agent_proof, f.agent_refutation = hit.get("proof"), hit.get("refutation")
             continue
         todo.append((c.step_id, f, prompts.TIER2_TASK.format(sid=c.step_id, latex=st.step(c.step_id).statement,
-                                                             binders=binders, claim=f.claim,
+                                                             binders=binders, ref_binders=ref_binders,
+                                                             claim=f.claim,
                                                              defs=defs or "(aucune)", cite=_cite_hint(f) + _kit_hint(ref))))
 
     def attempt(task):

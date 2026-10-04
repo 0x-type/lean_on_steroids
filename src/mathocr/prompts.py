@@ -146,7 +146,8 @@ Définitions disponibles :
 ```
 L'automatisation élémentaire (norm_num, ring, omega, linarith, simp) a échoué. Réponds avec `proof` \
 (bloc tactique après `by`) si l'énoncé est vrai sous ces hypothèses, ou `refutation` (bloc tactique \
-prouvant `¬ (∀ {binders}, {claim})`) s'il est faux. Laisse l'autre champ vide.{cite}"""
+prouvant `¬ (∀ {ref_binders}, {claim})` : toutes les hypothèses du cas où se trouve l'étape restent \
+vraies, un contre-exemple doit les respecter) s'il est faux. Laisse l'autre champ vide.{cite}"""
 
 BACKTRANSLATE_SYSTEM = """Tu lis des énoncés Lean 4 et tu les réécris en mathématiques usuelles (LaTeX), \
 fidèlement, sans rien améliorer. Tu ne connais pas la copie d'origine."""
