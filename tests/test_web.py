@@ -11,10 +11,10 @@ import pytest
 from PIL import Image
 
 from conftest import EX, ROOT, needs_lean
-from mathocr.llm.base import Engine
-from mathocr.pipeline import PipelineConfig
-from mathocr.stages import exercise_from_image as exi
-from mathocr.stages.exercise_from_image import WireCheck, WireExercise, build_reference
+from leanonsteroids.llm.base import Engine
+from leanonsteroids.pipeline import PipelineConfig
+from leanonsteroids.stages import exercise_from_image as exi
+from leanonsteroids.stages.exercise_from_image import WireCheck, WireExercise, build_reference
 
 GOOD = {"titre": "Carré constant", "statement_latex": "Soit $f$ continue telle que $f(x)^2 = a$. Montrer que $f$ est constante.",
         "objets": [{"nom": "f", "type": "ℝ → ℝ", "latex": "f"}, {"nom": "a", "type": "ℝ", "latex": "a"}],
@@ -74,7 +74,7 @@ def _multipart(fields: dict, files: list[tuple[str, bytes]]):
 
 
 def test_upload_rules(tmp_path):
-    from mathocr.web.server import UserError, parse_multipart, save_images
+    from leanonsteroids.web.server import UserError, parse_multipart, save_images
     body, ctype = _multipart({"exercice": "mw06"}, [("a.png", _png())])
     fields, files = parse_multipart(ctype, body)
     assert fields == {"exercice": "mw06"} and len(files) == 1
@@ -88,8 +88,8 @@ def test_upload_rules(tmp_path):
 def test_web_flow(tmp_path, monkeypatch):
     from http.server import ThreadingHTTPServer
 
-    from mathocr.schemas import ReferenceStatement
-    from mathocr.web import server
+    from leanonsteroids.schemas import ReferenceStatement
+    from leanonsteroids.web import server
 
     def fake_prepare(images, cfg, out_dir=None):
         ref = ReferenceStatement(exercise_id="auto_test", statement_latex="Montrer que $1+1=2$.",
@@ -102,7 +102,7 @@ def test_web_flow(tmp_path, monkeypatch):
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
-        assert b"MathOCR" in urllib.request.urlopen(base + "/").read()
+        assert b"Lean On Steroids" in urllib.request.urlopen(base + "/").read()
         ids = [e["id"] for e in json.loads(urllib.request.urlopen(base + "/api/exercices").read())["exercices"]]
         assert "mw06" in ids
         body, ctype = _multipart({}, [("enonce.png", _png())])

@@ -12,7 +12,7 @@ import urllib.request
 
 from bs4 import BeautifulSoup
 
-UA = {"User-Agent": "MathOCR-recherche/0.1 (prototype non commercial)"}
+UA = {"User-Agent": "Lean On Steroids-recherche/0.1 (prototype non commercial)"}
 
 
 def get(url: str) -> str:

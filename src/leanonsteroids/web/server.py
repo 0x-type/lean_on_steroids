@@ -1,7 +1,7 @@
 """Interface web : l'utilisateur envoie la capture de l'énoncé, puis les photos de sa copie.
 
 Serveur de la bibliothèque standard (aucune dépendance) ; chaque formalisation ou correction tourne dans un fil,
-la page suit son avancement par /api/job/<id>. Lancement : `mathocr web` (écoute sur 127.0.0.1 par défaut).
+la page suit son avancement par /api/job/<id>. Lancement : `leanonsteroids web` (écoute sur 127.0.0.1 par défaut).
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image
 
-log = logging.getLogger("mathocr.web")
+log = logging.getLogger("leanonsteroids.web")
 
 ROOT = Path(__file__).resolve().parents[3]
 PAGE = Path(__file__).with_name("index.html")
@@ -192,7 +192,7 @@ def parse_multipart(content_type: str, body: bytes) -> tuple[dict[str, str], lis
 
 def make_handler(app: App):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "MathOCR"
+        server_version = "Lean On Steroids"
 
         def log_message(self, fmt, *args):  # journal discret
             log.info("%s %s", self.address_string(), fmt % args)
@@ -253,7 +253,7 @@ def make_handler(app: App):
 def serve(host: str, port: int, cfg_factory, data_dir: Path | None = None) -> None:
     app = App(data_dir or ROOT / "runs" / "web", cfg_factory)
     httpd = ThreadingHTTPServer((host, port), make_handler(app))
-    print(f"MathOCR : http://{host}:{port}/  (Ctrl+C pour arrêter)")
+    print(f"Lean On Steroids : http://{host}:{port}/  (Ctrl+C pour arrêter)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

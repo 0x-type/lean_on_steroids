@@ -115,7 +115,7 @@ def make_engine(spec: str, cache_dir: Path | None = None, *, replay_only: bool =
     elif provider == "openrouter":
         from .openrouter_engine import OpenRouterEngine
         if not model:
-            raise EngineError("openrouter : préciser le modèle, ex. openrouter:google/<modèle> (voir « mathocr modeles »)")
+            raise EngineError("openrouter : préciser le modèle, ex. openrouter:google/<modèle> (voir « leanonsteroids modeles »)")
         eng = OpenRouterEngine(model)
     elif provider == "mathpix":
         from .mathpix_engine import MathpixEngine

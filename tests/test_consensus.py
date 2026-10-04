@@ -1,4 +1,4 @@
-from mathocr.stages.transcribe import WireLine, WireAlt, WireSpan, consensus
+from leanonsteroids.stages.transcribe import WireLine, WireAlt, WireSpan, consensus
 
 
 def test_disagreement_becomes_uncertainty():
@@ -45,13 +45,13 @@ def test_outvoted_anchor_is_replaced_by_majority_in_line_text():
 
 
 def test_letter_adjudication_renames_whole_line():
-    from mathocr.stages.transcribe import _rename_letter
+    from leanonsteroids.stages.transcribe import _rename_letter
     assert _rename_letter(r"c-à-d $\sum_{k=0}^{n-1} (2k+1) = n^2$", "k", "h") == r"c-à-d $\sum_{h=0}^{n-1} (2h+1) = n^2$"
     assert _rename_letter(r"$\ker k$ et k", "k", "h") == r"$\ker h$ et k"
 
 
 def test_mixed_box_conventions_are_repaired_per_box():
-    from mathocr.stages.transcribe import normalize_boxes
+    from leanonsteroids.stages.transcribe import normalize_boxes
     # Réponse réelle de Gemini : boîte 1 en [x0,y0,x1,y1], boîte 2 en [y0,x0,x1,y1]
     lines = [WireLine(bbox=[168, 142, 206, 163], text="Ex.", confidence=0.9),
              WireLine(bbox=[203, 298, 608, 245], text="$P(n)$", confidence=0.9)]
@@ -101,8 +101,8 @@ def test_layout_only_divergence_is_not_a_doubt():
 
 
 def test_span_boxes_give_one_close_up_per_occurrence():
-    from mathocr.schemas import TranscribedLine
-    from mathocr.stages.transcribe import span_boxes
+    from leanonsteroids.schemas import TranscribedLine
+    from leanonsteroids.stages.transcribe import span_boxes
     ln = TranscribedLine(id="p1.L08", page=1, bbox=[489, 569, 799, 645], text=r"$=(n+1)(\frac{n}{2}+2)$",
                          status="normal", confidence=0.3, engine_readings={})
     boxes = span_boxes(ln, "2")
@@ -111,7 +111,7 @@ def test_span_boxes_give_one_close_up_per_occurrence():
 
 
 def test_crossing_out_rule_only_ignores_an_added_mark():
-    from mathocr.stages.fidelity import _marque_en_plus
+    from leanonsteroids.stages.fidelity import _marque_en_plus
     assert _marque_en_plus("f(x)^2", "f(x^{\\bullet})^2")  # tache sur l'ancien carré (copie B06)
     assert _marque_en_plus("f(x)^2", "f(x^*)^2")
     assert not _marque_en_plus("n+1", "n+2")  # symbole remplacé

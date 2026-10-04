@@ -1,4 +1,4 @@
-# Espace Lean de MathOCR
+# Espace Lean de Lean On Steroids
 
 * `MathOCRCheck/Prelude.lean` : sous-ensemble de Mathlib importé par les fichiers générés
   (remplaçable par `import Mathlib` si la bibliothèque complète est compilée ou téléchargée).

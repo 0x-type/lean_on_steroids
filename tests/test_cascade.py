@@ -3,11 +3,11 @@
 import json
 
 from conftest import EX
-from mathocr.llm.base import Engine
-from mathocr.pipeline import PipelineConfig
-from mathocr.schemas import ReferenceStatement
-from mathocr.stages import transcribe as tmod
-from mathocr.stages.transcribe import WireCropReadings, WirePage
+from leanonsteroids.llm.base import Engine
+from leanonsteroids.pipeline import PipelineConfig
+from leanonsteroids.schemas import ReferenceStatement
+from leanonsteroids.stages import transcribe as tmod
+from leanonsteroids.stages.transcribe import WireCropReadings, WirePage
 
 TR = json.loads((EX / "fixtures" / "transcription.json").read_text())
 REF = ReferenceStatement(**json.loads((EX / "exercice.json").read_text()))
@@ -65,7 +65,7 @@ def test_audit_rereads_some_agreed_lines(monkeypatch, tmp_path):
 
 
 def test_evaluate_command_end_to_end(monkeypatch, tmp_path, capsys):
-    from mathocr import cli
+    from leanonsteroids import cli
 
     log = []
     monkeypatch.setattr(tmod, "make_engine", lambda spec, cache=None, **kw: Fake(spec, log))

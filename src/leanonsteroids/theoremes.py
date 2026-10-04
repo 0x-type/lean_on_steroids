@@ -2,7 +2,7 @@
 
 Un enseignant accepte « d'après le TVI, il existe c… » sans redémonstration. Le système fait de même,
 à trois conditions vérifiées par du code :
-1. le théorème appartient au catalogue (src/mathocr/data/theoremes.json), dont chaque lemme Mathlib
+1. le théorème appartient au catalogue (src/leanonsteroids/data/theoremes.json), dont chaque lemme Mathlib
    a été vérifié par Lean (scripts/verifier_catalogue.py) ;
 2. l'élève a écrit son nom : la citation est retrouvée dans les lignes de l'étape (ou la ligne juste
    avant), jamais seulement suggérée par un agent ;

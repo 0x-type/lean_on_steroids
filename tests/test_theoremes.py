@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from mathocr.theoremes import Catalogue, Theoreme, juger_usages, reperer
+from leanonsteroids.theoremes import Catalogue, Theoreme, juger_usages, reperer
 
 
 @pytest.fixture
@@ -46,8 +46,8 @@ def test_citation_sans_usage_et_preuve_elementaire(cat):
 
 
 def test_citation_ancree_dans_la_copie(cat, monkeypatch):
-    from mathocr import theoremes
-    from mathocr.schemas import Citation, ProofStep, ProofStructure, SourceRef, TranscribedLine, Transcription
+    from leanonsteroids import theoremes
+    from leanonsteroids.schemas import Citation, ProofStep, ProofStructure, SourceRef, TranscribedLine, Transcription
 
     monkeypatch.setattr(theoremes, "charger", lambda path=None: cat)
     lines = [TranscribedLine(id="p1.L01", page=1, bbox=[0, 0, 1, 1], text="on applique le TVI :", status="normal",
@@ -66,7 +66,7 @@ def test_citation_ancree_dans_la_copie(cat, monkeypatch):
 
 
 def test_pluriels_ignores_sigles_respectes(cat):
-    from mathocr.theoremes import Theoreme
+    from leanonsteroids.theoremes import Theoreme
     cat.theoremes["fact"] = Theoreme(cle="fact", nom="décomposition", alias=["produit de facteurs premiers"],
                                      lemmes=["x"], verifie=True)
     assert reperer("se décompose en un produit de facteur premiers", cat) == ["fact"]
@@ -78,7 +78,7 @@ def test_pluriels_ignores_sigles_respectes(cat):
     ("croissante", "décroissante", True), ("continue", "continu", False), ("et", "ou", True),
     ("positive", "positif", False), ("pair", "impair", True), ("majorée", "minorée", True)])
 def test_seuls_les_mots_logiques_bloquent(a, b, change):
-    from mathocr.stages.fidelity import _logic_change, normalize_notation
+    from leanonsteroids.stages.fidelity import _logic_change, normalize_notation
     assert _logic_change(a, b) is change
     assert normalize_notation(r"$A \Rightarrow B$") == normalize_notation(r"$A \implies B$")
 
@@ -92,9 +92,9 @@ def test_regle_de_simplification_est_un_fait_de_base(cat):
 
 @pytest.mark.parametrize("tolerance,blocks", [("tolerant", False), ("strict", True)])
 def test_justification_elementaire_absente_selon_le_mode(tolerance, blocks):
-    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+    from leanonsteroids.schemas import (Formalization, LeanReport, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
                                  StepCheck, StepFormal, Transcription)
-    from mathocr.stages.verdict import decide
+    from leanonsteroids.stages.verdict import decide
     ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True", validated_by="test")
     st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
         ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
@@ -107,7 +107,7 @@ def test_justification_elementaire_absente_selon_le_mode(tolerance, blocks):
 
 
 def test_ponctuation_seule_ne_bloque_pas():
-    from mathocr.stages.fidelity import _sans_ponctuation
+    from leanonsteroids.stages.fidelity import _sans_ponctuation
     assert _sans_ponctuation(",") == _sans_ponctuation(";")
     assert _sans_ponctuation("[a, b]") == _sans_ponctuation("[a ; b]")
     assert _sans_ponctuation("x = 1") != _sans_ponctuation("x = 2")
@@ -116,7 +116,7 @@ def test_ponctuation_seule_ne_bloque_pas():
 def test_lemme_du_kit_qui_est_un_grand_theoreme_exige_une_citation(cat):
     """Cas réel (B06) : le TVI du kit fermait « f est constante » sans que la copie cite le TVI. Une copie qui
     oublie complètement le TVI aurait été « vérifiée » : un pas difficile absent n'est jamais toléré."""
-    from mathocr.theoremes import cles_kit, juger_assemblage
+    from leanonsteroids.theoremes import cles_kit, juger_assemblage
     kt = {"Kit.tvi_annulation": "tvi"}
     used = [("Kit.tvi_annulation", "Kit"), ("Kit.valeurs_possibles", "Kit"), ("le_of_not_gt", "Mathlib.Order.Defs")]
     ok, why = juger_usages([], used, cat, kit_theoremes=kt)
@@ -134,7 +134,7 @@ def test_lemme_du_kit_qui_est_un_grand_theoreme_exige_une_citation(cat):
 def test_lemme_du_kit_qui_est_un_grand_theoreme_exige_une_citation(cat):
     """Cas réel (B06) : le TVI du kit fermait « f est constante » sans que la copie cite le TVI. Une copie qui
     oublie complètement le TVI aurait été « vérifiée » : un pas difficile absent n'est jamais toléré."""
-    from mathocr.theoremes import cles_kit, juger_assemblage
+    from leanonsteroids.theoremes import cles_kit, juger_assemblage
     kt = {"Kit.tvi_annulation": "tvi"}
     used = [("Kit.tvi_annulation", "Kit"), ("Kit.valeurs_possibles", "Kit"), ("le_of_not_gt", "Mathlib.Order.Defs")]
     ok, why = juger_usages([], used, cat, kit_theoremes=kt)

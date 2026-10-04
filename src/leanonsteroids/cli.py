@@ -1,10 +1,10 @@
 """Interface en ligne de commande.
 
-    mathocr corriger --exercice ex.json --images p1.jpg p2.jpg --sortie runs/eleve42 \\
+    leanonsteroids corriger --exercice ex.json --images p1.jpg p2.jpg --sortie runs/eleve42 \\
         --ocr anthropic:claude-opus-5-5 --ocr gemini:gemini-3-pro --ocr mathpix \\
         --raisonnement anthropic:claude-opus-5-5 --juge openai:gpt-5
 
-    mathocr demo            # exemple fourni + variantes, sans clé d'API
+    leanonsteroids demo            # exemple fourni + variantes, sans clé d'API
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def _apply_profile(a, prof: dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="mathocr", description="Correction de copies manuscrites vérifiée par Lean 4.")
+    ap = argparse.ArgumentParser(prog="leanonsteroids", description="Correction de copies manuscrites vérifiée par Lean 4.")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     def common(p):

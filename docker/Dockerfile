@@ -1,6 +1,6 @@
 # Image d'isolation pour la vérification Lean (moteur --sandbox docker).
-# Construction (à la racine du dépôt) :  docker build -f docker/Dockerfile -t mathocr-lean .
-# Exécution par MathOCR : --network none, --read-only, mémoire/CPU/PIDs bornés, fichier monté en lecture seule.
+# Construction (à la racine du dépôt) :  docker build -f docker/Dockerfile -t leanonsteroids-lean .
+# Exécution par Lean On Steroids : --network none, --read-only, mémoire/CPU/PIDs bornés, fichier monté en lecture seule.
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git zstd \
     && rm -rf /var/lib/apt/lists/*

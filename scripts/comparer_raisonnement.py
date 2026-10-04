@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from mathocr.pipeline import PipelineConfig, run
+from leanonsteroids.pipeline import PipelineConfig, run
 
 ROOT = Path(__file__).resolve().parent.parent
 EX = ROOT / "examples" / "somme_impairs"

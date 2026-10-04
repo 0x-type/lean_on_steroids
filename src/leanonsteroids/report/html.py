@@ -257,7 +257,7 @@ def render_html(r: RunResult, out_dir: Path | None = None) -> str:
                     + "</table></section>")
     stmt = f'<div class="sub">Énoncé : {e(r.exercise.statement_latex)}</div>'
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Correction MathOCR</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Correction Lean On Steroids</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>

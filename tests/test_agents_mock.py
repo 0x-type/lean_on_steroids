@@ -9,12 +9,12 @@ import json
 import pytest
 
 from conftest import EX, ROOT, needs_lean
-from mathocr.llm.base import Engine
-from mathocr.pipeline import PipelineConfig, run
-from mathocr.schemas import ProofStructure, Verdict
-from mathocr.stages import agents, transcribe as tmod
-from mathocr.stages.agents import WireFormalization
-from mathocr.stages.transcribe import WireDecisions, WirePage
+from leanonsteroids.llm.base import Engine
+from leanonsteroids.pipeline import PipelineConfig, run
+from leanonsteroids.schemas import ProofStructure, Verdict
+from leanonsteroids.stages import agents, transcribe as tmod
+from leanonsteroids.stages.agents import WireFormalization
+from leanonsteroids.stages.transcribe import WireDecisions, WirePage
 
 FIX = EX / "fixtures"
 TR = json.loads((FIX / "transcription.json").read_text())
@@ -95,7 +95,7 @@ def test_full_llm_path_with_fake_engines(tmp_path, fake):
 
 
 def test_tier2_uses_given_engine_and_only_selected_steps(monkeypatch):
-    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+    from leanonsteroids.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
                                  SourceRef, StepCheck, StepFormal)
     ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
     st = PS(steps=[ProofStep(id=i, kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])
@@ -106,12 +106,12 @@ def test_tier2_uses_given_engine_and_only_selected_steps(monkeypatch):
 
     class E:
         def structured(self, system, text, images, schema, **kw):
-            from mathocr.llm.pricing import record
+            from leanonsteroids.llm.pricing import record
             record(engine="e", model="m", input_tokens=1, output_tokens=1, cost_usd=0.5)
             return agents.WireTier2(proof="rfl")
 
     monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: used.append(spec) or E())
-    from mathocr.llm.pricing import ledger_scope
+    from leanonsteroids.llm.pricing import ledger_scope
     with ledger_scope() as led:
         out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="fort"),
                                     engine="bon_marche", only={"s2"})
@@ -127,8 +127,8 @@ def test_inadmissible_tier2_fragment_is_dropped_not_fatal():
 
 
 def test_tier2_engine_failure_leaves_step_unverified(monkeypatch):
-    from mathocr.llm.base import EngineError
-    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+    from leanonsteroids.llm.base import EngineError
+    from leanonsteroids.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
                                  SourceRef, StepCheck, StepFormal)
     ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
     st = PS(steps=[ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])],
@@ -146,7 +146,7 @@ def test_tier2_engine_failure_leaves_step_unverified(monkeypatch):
 
 
 def test_chain_link_is_checked_without_previous_link():
-    from mathocr.schemas import Formalization, ProofStep, ProofStructure as PS, SourceRef, StepFormal
+    from leanonsteroids.schemas import Formalization, ProofStep, ProofStructure as PS, SourceRef, StepFormal
     steps = [ProofStep(id="s2", kind="hypothese", statement="S = T", source=[SourceRef(line_id="l", excerpt="x")]),
              ProofStep(id="s5", kind="calcul", statement="A = B", depends_on=["s2"], source=[SourceRef(line_id="l", excerpt="x")]),
              ProofStep(id="s6", kind="calcul", statement="B = C", depends_on=["s5"], source=[SourceRef(line_id="l", excerpt="x")])]
@@ -160,7 +160,7 @@ def test_chain_link_is_checked_without_previous_link():
 
 def test_tier2_slow_attempt_is_abandoned(monkeypatch):
     import time as _t
-    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+    from leanonsteroids.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
                                  SourceRef, StepCheck, StepFormal)
     ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
     st = PS(steps=[ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])],
@@ -180,8 +180,8 @@ def test_tier2_slow_attempt_is_abandoned(monkeypatch):
 
 
 def test_reading_doubt_reaches_next_chain_link():
-    from mathocr.schemas import ProofStep, ProofStructure as PS, SourceRef
-    from mathocr.stages.fidelity import _chain_successors
+    from leanonsteroids.schemas import ProofStep, ProofStructure as PS, SourceRef
+    from leanonsteroids.stages.fidelity import _chain_successors
     mk = lambda i, stmt, line: ProofStep(id=i, kind="calcul", statement=stmt, source=[SourceRef(line_id=line, excerpt="x")])
     st = PS(steps=[mk("s6", r"A = (n+1)(\frac{n}{2}+2)", "L08"), mk("s7", r"(n+1)(\frac{n}{2}+2) = B", "L09"),
                    mk("s8", "B = C", "L10")], scopes=[], pattern={"kind": "aucun"})
@@ -190,7 +190,7 @@ def test_reading_doubt_reaches_next_chain_link():
 
 
 def test_unfaithful_translation_is_redone_once_with_the_judge_remark(monkeypatch):
-    from mathocr.schemas import Formalization, ProofStep, ProofStructure as PS, ReferenceStatement, SourceRef, StepFormal
+    from leanonsteroids.schemas import Formalization, ProofStep, ProofStructure as PS, ReferenceStatement, SourceRef, StepFormal
 
     ref = ReferenceStatement(exercise_id="x", statement_latex="", lean_statement="True")
     st = PS(scopes=[], pattern={"kind": "aucun"}, steps=[
@@ -229,7 +229,7 @@ def test_judge_runs_alongside_level2(tmp_path, fake):
 
 def test_profile_m_fills_only_missing_engines():
     import argparse
-    from mathocr.cli import PROFILS, _apply_profile
+    from leanonsteroids.cli import PROFILS, _apply_profile
     a = argparse.Namespace(ocr=None, effort_ocr=None, raisonnement="openrouter:x/y", arbitre=None, niveau2=None,
                            secours=None, assemblage=None, juge=None, effort_juge=None)
     _apply_profile(a, PROFILS["M"])

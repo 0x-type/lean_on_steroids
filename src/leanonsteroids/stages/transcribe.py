@@ -39,7 +39,7 @@ from ..schemas import (
     Uncertainty,
 )
 
-log = logging.getLogger("mathocr.transcribe")
+log = logging.getLogger("leanonsteroids.transcribe")
 LLM_MAX_SIDE = 2000
 
 

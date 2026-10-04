@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CAT = ROOT / "src" / "mathocr" / "data" / "theoremes.json"
+CAT = ROOT / "src" / "leanonsteroids" / "data" / "theoremes.json"
 
 
 def check(entry: dict, ws: Path) -> tuple[bool, list[str]]:

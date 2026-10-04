@@ -10,10 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from mathocr.lean.sandbox import SandboxConfig  # noqa: E402
-from mathocr.lean.verify import verify  # noqa: E402
-from mathocr.schemas import ProofStructure, ReferenceStatement  # noqa: E402
-from mathocr.stages.latex2lean import translate_structure  # noqa: E402
+from leanonsteroids.lean.sandbox import SandboxConfig  # noqa: E402
+from leanonsteroids.lean.verify import verify  # noqa: E402
+from leanonsteroids.schemas import ProofStructure, ReferenceStatement  # noqa: E402
+from leanonsteroids.stages.latex2lean import translate_structure  # noqa: E402
 
 PROBLEMES = json.loads((Path(__file__).parent / "problemes.json").read_text())
 

@@ -5,11 +5,11 @@ import json
 import pytest
 
 from conftest import EX, ROOT, needs_lean
-from mathocr.llm.base import Engine
-from mathocr.pipeline import PipelineConfig, run
-from mathocr.schemas import Verdict
-from mathocr.stages import agents
-from mathocr.stages.agents import WireFormalization, WireTier2
+from leanonsteroids.llm.base import Engine
+from leanonsteroids.pipeline import PipelineConfig, run
+from leanonsteroids.schemas import Verdict
+from leanonsteroids.stages import agents
+from leanonsteroids.stages.agents import WireFormalization, WireTier2
 
 FIX = EX / "fixtures"
 

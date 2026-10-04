@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from conftest import EX, needs_lean
-from mathocr.pipeline import PipelineConfig, run
-from mathocr.schemas import Verdict
+from leanonsteroids.pipeline import PipelineConfig, run
+from leanonsteroids.schemas import Verdict
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = ["fixtures"] + sorted(p.name for p in (EX / "variantes").iterdir() if p.is_dir())
@@ -123,7 +123,7 @@ def test_broken_definition_never_yields_a_conclusion(tmp_path):
 def test_doubt_that_cannot_change_verdict_is_cleared_by_lean(tmp_path):
     """Cas réel : « 0^2 = 0 » pouvait se lire « 0 = 0 » (15 %). Les deux lectures sont vraies et la copie
     reste vérifiée : Lean le confirme, le doute ne bloque plus. « 0^2 = 1 » changerait le verdict."""
-    from mathocr.schemas import Reading, Uncertainty
+    from leanonsteroids.schemas import Reading, Uncertainty
     # Une « rature » déclarée par l'arbitre n'efface jamais un symbole remplacé (0 → 1).
     for alt, rature, expected in (("0 = 0", False, Verdict.verified), ("0^2 = 1", False, Verdict.review),
                                   ("0^2 = 1", True, Verdict.review)):
@@ -141,7 +141,7 @@ def test_doubt_that_cannot_change_verdict_is_cleared_by_lean(tmp_path):
 
 
 def _tvi_case(proof: str):
-    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+    from leanonsteroids.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
                                  StepFormal)
     ref = ReferenceStatement(exercise_id="tvi", statement_latex="", lean_statement="True",
                              lean_imports=["MathOCRCheck.Prelude", "Mathlib.Topology.Order.IntermediateValue",
@@ -167,9 +167,9 @@ def _tvi_case(proof: str):
      "verifie_agent"),
 ])
 def test_cited_theorem_is_accepted_only_if_used_alone(tmp_path, monkeypatch, proof, expected):
-    from mathocr import theoremes
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
+    from leanonsteroids import theoremes
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
 
     cat = theoremes.Catalogue({"tvi": theoremes.Theoreme(
         cle="tvi", nom="théorème des valeurs intermédiaires", alias=["TVI"],
@@ -185,9 +185,9 @@ def test_cited_theorem_is_accepted_only_if_used_alone(tmp_path, monkeypatch, pro
 @needs_lean
 @pytest.mark.lean
 def test_exercise_context_is_available_to_steps_and_assembly(tmp_path):
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
-    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
+    from leanonsteroids.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef,
                                  StepFormal)
     ref = ReferenceStatement(
         exercise_id="ctx", statement_latex="Soit f telle que f(x)² = a pour tout x. Montrer que f(0)² = a.",
@@ -212,9 +212,9 @@ def test_exercise_context_is_available_to_steps_and_assembly(tmp_path):
     ("∀ x y : ℝ, f x ≤ 0 → 0 ≤ f y → ∃ c, f c = 0", ["tvi"], True),
 ])
 def test_exercise_kit_result_closes_a_step(tmp_path, claim, cites_copie, closed):
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
-    from mathocr.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
+    from leanonsteroids.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
     ref = ReferenceStatement(**json.loads((ROOT / "examples/collecte/exercices/mw06.json").read_text()))
     st = ProofStructure(scopes=[], pattern={"kind": "aucun"}, steps=[
         ProofStep(id="s1", kind="affirmation", statement="f s'annule", source=[SourceRef(line_id="p1.L01", excerpt="x")])])
@@ -229,7 +229,7 @@ def test_exercise_kit_result_closes_a_step(tmp_path, claim, cites_copie, closed)
 
 
 def _glue_case(glue: str):
-    from mathocr.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
+    from leanonsteroids.schemas import Formalization, ProofStep, ProofStructure, ReferenceStatement, SourceRef, StepFormal
     ref = ReferenceStatement(exercise_id="abs", statement_latex="Si x² = 0 alors x = 0.",
                              lean_statement="∀ (x : ℝ), x ^ 2 = 0 → x = 0",
                              contexte={"objets": [{"nom": "x", "type": "ℝ"}],
@@ -255,8 +255,8 @@ def _glue_case(glue: str):
     ("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nnlinarith", False),          # tactique interdite
 ])
 def test_agent_assembly_is_checked(tmp_path, glue, accepted):
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
     ref, st, fm = _glue_case(glue)
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     assert lean.steps[1].status == "verifie_elementaire", lean.steps[1]
@@ -267,8 +267,8 @@ def test_agent_assembly_is_checked(tmp_path, glue, accepted):
 @needs_lean
 @pytest.mark.lean
 def test_agent_assembly_axioms_are_the_ones_checked(tmp_path):
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
     ref, st, fm = _glue_case("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nlinarith")
     lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
     assert lean.assembly_ok and lean.axioms_ok  # l'assemblage automatique (échoué) ne compte plus
@@ -279,9 +279,9 @@ def test_agent_assembly_axioms_are_the_ones_checked(tmp_path):
 def test_refutation_respects_the_case_hypothesis(tmp_path):
     """Cas réel (B07) : « pour x ∈ [0,1[ … |xⁿ − f(x)| = xⁿ » était « réfutée » en x = −1, car l'hypothèse
     du cas n'était pas passée à la réfutation. Une étape vraie dans son cas n'est jamais déclarée fausse."""
-    from mathocr.lean.sandbox import SandboxConfig
-    from mathocr.lean.verify import verify
-    from mathocr.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, ScopeFormal,
+    from leanonsteroids.lean.sandbox import SandboxConfig
+    from leanonsteroids.lean.verify import verify
+    from leanonsteroids.schemas import (Formalization, ProofStep, ProofStructure, ReferenceStatement, ScopeFormal,
                                  SourceRef, StepFormal)
     ref = ReferenceStatement(exercise_id="cas", statement_latex="", lean_statement="True")
     src = [SourceRef(line_id="p1.L01", excerpt="x")]

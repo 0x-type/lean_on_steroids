@@ -23,7 +23,7 @@ from ..lean.sandbox import SandboxConfig, run_lean
 from ..llm.base import make_engine
 from ..schemas import Contexte, HypotheseContexte, ObjetContexte, ReferenceStatement
 
-log = logging.getLogger("mathocr.exercice")
+log = logging.getLogger("leanonsteroids.exercice")
 
 MAX_REPAIRS = 2
 # Modules déjà compilés dans l'espace Lean (exercices préparés, catalogue des théorèmes) : proposés en priorité.

@@ -371,7 +371,7 @@ class LeanGenerator:
             w.emit(f"import {imp}")
         w.emit("import MathOCRCheck.Auto")
         w.emit("")
-        w.emit("/-! Fichier généré par MathOCR — gabarit de confiance.")
+        w.emit("/-! Fichier généré par Lean On Steroids : gabarit de confiance.")
         w.emit("    Les fragments issus des agents (énoncés, définitions) sont filtrés par la politique")
         w.emit("    de sécurité ; toutes les preuves élémentaires viennent de `mathocr_core`. -/")
         w.emit("set_option autoImplicit false")
@@ -522,7 +522,7 @@ class LeanGenerator:
             w.block("axioms", None, t, f"#print axioms {t}")
 
         # Théorèmes de bibliothèque utilisés par chaque preuve de niveau 2 : une étape n'est « justifiée par
-        # un théorème cité » que si la preuve n'en utilise pas d'autre (voir mathocr.theoremes).
+        # un théorème cité » que si la preuve n'en utilise pas d'autre (voir leanonsteroids.theoremes).
         agents = [s.decl for s in w.segments if s.kind in ("agent_proof", "assembly_agent") and s.decl]
         if agents:
             w.block("uses", None, None, _USES_HELPER + "\n".join(

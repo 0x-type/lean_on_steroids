@@ -5,9 +5,9 @@ import json
 import pytest
 from openai.types.chat import ChatCompletion
 
-from mathocr.llm.base import CachedEngine, ImagePart, make_engine
-from mathocr.llm.pricing import ledger_scope
-from mathocr.stages.transcribe import WirePage
+from leanonsteroids.llm.base import CachedEngine, ImagePart, make_engine
+from leanonsteroids.llm.pricing import ledger_scope
+from leanonsteroids.stages.transcribe import WirePage
 
 PAGE = {"lines": [{"bbox": [1, 2, 3, 4], "text": "$0^2 = 0$", "status": "normal", "confidence": 0.9,
                    "uncertain": []}], "notes": ""}

@@ -4,8 +4,8 @@ import pytest
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from conftest import EX, ROOT
-from mathocr.pipeline import PipelineConfig, run
-from mathocr.stages.photo_quality import PhotoRejected, check
+from leanonsteroids.pipeline import PipelineConfig, run
+from leanonsteroids.stages.photo_quality import PhotoRejected, check
 
 ORIG = ImageOps.exif_transpose(Image.open(EX / "copie_p1.webp")).convert("RGB")
 

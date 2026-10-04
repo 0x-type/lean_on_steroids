@@ -38,7 +38,7 @@ class SandboxConfig:
     memory_mb: int = 8192  # limite interne de Lean (-M)
     address_space_mb: int = 0  # RLIMIT_AS ; 0 = pas de limite (Lean projette les .olean en mémoire)
     threads: int = 2
-    docker_image: str = "mathocr-lean:latest"
+    docker_image: str = "leanonsteroids-lean:latest"
     extra_env: dict[str, str] = field(default_factory=dict)
 
 
@@ -130,7 +130,7 @@ def resolve_backend(cfg: SandboxConfig) -> str:
 
 def run_lean(source: str, cfg: SandboxConfig, filename: str = "Copie.lean") -> LeanRun:
     backend = resolve_backend(cfg)
-    with tempfile.TemporaryDirectory(prefix="mathocr-lean-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="leanonsteroids-lean-") as tmp:
         tmpdir = Path(tmp)
         src = tmpdir / filename
         src.write_text(source, encoding="utf-8")

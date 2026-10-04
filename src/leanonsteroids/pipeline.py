@@ -32,7 +32,7 @@ from .stages.feedback import build_feedback
 from .stages.fidelity import run_fidelity
 from .stages.verdict import decide
 
-log = logging.getLogger("mathocr")
+log = logging.getLogger("leanonsteroids")
 
 
 @dataclass
@@ -41,7 +41,7 @@ class PipelineConfig:
     sandbox: str = "auto"
     lean_timeout_s: float = 300.0
     lean_memory_mb: int = 8192
-    # Moteurs (voir mathocr.llm) ; vides = mode hors-ligne (fixtures obligatoires).
+    # Moteurs (voir leanonsteroids.llm) ; vides = mode hors-ligne (fixtures obligatoires).
     ocr_engines: list[str] = field(default_factory=list)
     # Mode « cascade » : ocr_engines (bon marché) lisent la page ; seules les lignes disputées
     # sont relues, zoomées, par ocr_strong. audit_rate : part des lignes d'accord relues quand même.

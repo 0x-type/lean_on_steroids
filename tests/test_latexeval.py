@@ -1,6 +1,6 @@
 from fractions import Fraction
 
-from mathocr.stages.latexeval import evaluate, free_symbols
+from leanonsteroids.stages.latexeval import evaluate, free_symbols
 
 
 def test_sum_and_empty_sum():

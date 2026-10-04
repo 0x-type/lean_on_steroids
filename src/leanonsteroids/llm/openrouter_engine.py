@@ -26,7 +26,7 @@ from pydantic import ValidationError
 
 from .base import Engine, EngineError, ImagePart
 
-log = logging.getLogger("mathocr.openrouter")
+log = logging.getLogger("leanonsteroids.openrouter")
 
 BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -51,7 +51,7 @@ class OpenRouterEngine(Engine):
             raise EngineError("openrouter : OPENROUTER_API_KEY absente")
         self._openai = openai
         self.client = openai.OpenAI(base_url=BASE_URL, api_key=key,
-                                    default_headers={"X-Title": "MathOCR"})
+                                    default_headers={"X-Title": "Lean On Steroids"})
         self.model = model
         self.name = f"openrouter:{model}"
         self.max_tokens = max_tokens

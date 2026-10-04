@@ -26,7 +26,7 @@ NOTATION = [r"\\begin\{pmatrix|\\begin\{bmatrix", r"\\int", r"\\lim", r"\\sum|\\
 
 
 def solution(url: str) -> tuple[str, str]:
-    html = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "MathOCR-recherche/0.1"}),
+    html = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Lean On Steroids-recherche/0.1"}),
                                   timeout=40).read().decode("utf-8", "replace")
     soup = BeautifulSoup(html, "html.parser")
     for k in soup.select(".katex"):

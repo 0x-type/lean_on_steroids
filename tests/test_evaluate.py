@@ -1,9 +1,9 @@
 import json
 
 from conftest import EX
-from mathocr.schemas import Transcription, Uncertainty, Reading
-from mathocr.stages.evaluate import _math, score
-from mathocr.stages.transcribe import tokens
+from leanonsteroids.schemas import Transcription, Uncertainty, Reading
+from leanonsteroids.stages.evaluate import _math, score
+from leanonsteroids.stages.transcribe import tokens
 
 REF = Transcription(**json.loads((EX / "fixtures" / "transcription.json").read_text()))
 

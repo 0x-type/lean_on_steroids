@@ -1,8 +1,8 @@
-# MathOCR
+# Lean On Steroids
 
 Correction de démonstrations mathématiques manuscrites, vérifiée par Lean 4.
 
-On photographie l'énoncé, puis la copie. MathOCR lit l'écriture, découpe le raisonnement en étapes,
+On photographie l'énoncé, puis la copie. Lean On Steroids lit l'écriture, découpe le raisonnement en étapes,
 traduit chaque étape en Lean 4 (Mathlib) et la fait vérifier par Lean. Le résultat est l'une de trois
 issues, avec un retour de correcteur en français.
 
@@ -17,7 +17,7 @@ Lean 4 est l'inverse : un vérificateur de preuves **exact**. Une étape qu'il a
 une étape qu'il réfute est fausse, sans avis ni approximation. Mais Lean ne sait pas lire une photo ni
 comprendre une rédaction en français.
 
-MathOCR combine les deux, et chacun reste à sa place :
+Lean On Steroids combine les deux, et chacun reste à sa place :
 
 * les modèles d'IA **lisent, structurent et proposent** (une lecture, une traduction, une preuve) ;
 * Lean **tranche** : rien n'est validé parce qu'une IA l'affirme, seulement parce que Lean l'a vérifié ;
@@ -44,8 +44,8 @@ le sont jamais.
 pip install -e ".[dev]"
 # Lean 4.34.1 et Mathlib : voir lean_workspace/README.md
 export OPENROUTER_API_KEY=...
-mathocr web                    # http://127.0.0.1:8000/
-mathocr web --hote 0.0.0.0 --port 8080   # exposée au réseau, derrière un proxy HTTPS
+leanonsteroids web                    # http://127.0.0.1:8000/
+leanonsteroids web --hote 0.0.0.0 --port 8080   # exposée au réseau, derrière un proxy HTTPS
 ```
 
 1. **L'énoncé** : une capture d'écran ou une photo de n'importe quel exercice. Il est écrit en Lean,
@@ -62,9 +62,9 @@ deux corrections au plus tournent en même temps, car Lean est gourmand.
 ## Ligne de commande
 
 ```sh
-mathocr corriger --exercice examples/collecte/exercices/mw06.json --images copie.jpg --sortie runs/x
-mathocr demo          # copie d'exemple et 4 variantes, sans clé d'API
-mathocr photo copie.jpg   # contrôle local de la photo, gratuit
+leanonsteroids corriger --exercice examples/collecte/exercices/mw06.json --images copie.jpg --sortie runs/x
+leanonsteroids demo          # copie d'exemple et 4 variantes, sans clé d'API
+leanonsteroids photo copie.jpg   # contrôle local de la photo, gratuit
 pytest                # 142 tests, dont des cas de bout en bout avec Lean
 ```
 
@@ -138,7 +138,7 @@ Aucune fausse accusation et aucun faux « vérifié » sur l'ensemble des essais
 ## Fichiers
 
 ```
-src/mathocr/
+src/leanonsteroids/
   pipeline.py, cli.py     orchestration, ligne de commande, profils de modèles
   web/                    interface web (server.py, index.html)
   stages/transcribe.py    lecture multi-moteurs, consensus, arbitrage

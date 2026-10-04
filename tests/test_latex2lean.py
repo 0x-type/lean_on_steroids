@@ -1,6 +1,6 @@
 import pytest
 
-from mathocr.stages.latex2lean import TranslationError, Translator
+from leanonsteroids.stages.latex2lean import TranslationError, Translator
 
 
 def T(types=None, preds=("P",)):
@@ -54,8 +54,8 @@ def test_incoherent_reading_is_refused_not_quantified():
     import json
 
     from conftest import EX
-    from mathocr.schemas import ProofStructure, ReferenceStatement
-    from mathocr.stages.latex2lean import translate_structure
+    from leanonsteroids.schemas import ProofStructure, ReferenceStatement
+    from leanonsteroids.stages.latex2lean import translate_structure
 
     ref = ReferenceStatement(**json.loads((EX / "exercice.json").read_text()))
     st = json.loads((EX / "fixtures" / "structure.json").read_text())
@@ -97,8 +97,8 @@ def test_definition_notations(stmt):
 
 
 def test_exercise_objects_are_not_an_incoherent_reading():
-    from mathocr.schemas import ReferenceStatement
-    from mathocr.stages.latex2lean import exercise_names
+    from leanonsteroids.schemas import ReferenceStatement
+    from leanonsteroids.stages.latex2lean import exercise_names
     ref = ReferenceStatement(exercise_id="t", statement_latex="",
                              lean_statement="∀ (f : ℝ → ℝ) (a : ℝ), Continuous f → 0 ≤ a → ∀ x y, f x = f y")
     assert {"f", "a", "x", "y"} <= exercise_names(ref) and "fun" not in exercise_names(ref)

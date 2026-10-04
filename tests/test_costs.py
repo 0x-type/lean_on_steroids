@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from mathocr.llm.base import CachedEngine, Engine
-from mathocr.llm.pricing import ledger_scope, set_stage
+from leanonsteroids.llm.base import CachedEngine, Engine
+from leanonsteroids.llm.pricing import ledger_scope, set_stage
 
 
 class Out(BaseModel):

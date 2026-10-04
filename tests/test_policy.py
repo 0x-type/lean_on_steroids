@@ -1,6 +1,6 @@
 import pytest
 
-from mathocr.lean.policy import check_axioms, check_fragment
+from leanonsteroids.lean.policy import check_axioms, check_fragment
 
 
 @pytest.mark.parametrize("frag", [
@@ -42,7 +42,7 @@ def test_axioms():
 
 
 def test_greek_identifiers_allowed_except_lambda():
-    from mathocr.lean.policy import check_identifier
+    from leanonsteroids.lean.policy import check_identifier
     assert not check_identifier("α", "t") and not check_identifier("ε₁", "t")
     assert check_identifier("λ", "t") and check_identifier("sorry", "t")
 
@@ -50,7 +50,7 @@ def test_greek_identifiers_allowed_except_lambda():
 def test_agent_tactic_block_keeps_its_layout():
     """Cas réel (B06) : une preuve juste, uniformément indentée ou commencée par « by », était cassée par la
     mise en page et refusée par Lean."""
-    from mathocr.lean.leangen import _tactics
+    from leanonsteroids.lean.leangen import _tactics
     assert _tactics("  have h : 1 = 1 := by\n    rfl\n  exact h") == "  have h : 1 = 1 := by\n    rfl\n  exact h"
     assert _tactics("by\n  intro x\n  rfl") == "  intro x\n  rfl"
     assert _tactics("intro x\nrfl\n") == "  intro x\n  rfl"

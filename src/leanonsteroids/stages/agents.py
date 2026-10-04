@@ -36,7 +36,7 @@ from ..schemas import (
 )
 from .fidelity import check_anchoring
 
-log = logging.getLogger("mathocr.agents")
+log = logging.getLogger("leanonsteroids.agents")
 MAX_REPAIRS = 2
 
 
