@@ -1,8 +1,8 @@
 # Espace Lean de MathOCR
 
-* `MathOCRCheck/Prelude.lean` — sous-ensemble de Mathlib importé par les fichiers générés
+* `MathOCRCheck/Prelude.lean` : sous-ensemble de Mathlib importé par les fichiers générés
   (remplaçable par `import Mathlib` si la bibliothèque complète est compilée ou téléchargée).
-* `MathOCRCheck/Auto.lean` — automatisation élémentaire de confiance (`mathocr_core`,
+* `MathOCRCheck/Auto.lean` : automatisation élémentaire de confiance (`mathocr_core`,
   `mathocr_refute_at`). C'est la seule « intelligence » autorisée à prouver une étape de copie.
 
 Installation (Lean 4.34.1, Mathlib v4.34.1) :
