@@ -5,7 +5,8 @@
  "lean_imports": [
   "MathOCRCheck.Prelude",
   "Mathlib.Topology.Order.IntermediateValue",
-  "Mathlib.Topology.Instances.Real.Lemmas"
+  "Mathlib.Topology.Instances.Real.Lemmas",
+  "Mathlib.Analysis.Real.Sqrt"
  ],
  "lean_opens": [
   "Finset"
