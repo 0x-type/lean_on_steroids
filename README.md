@@ -41,6 +41,7 @@ le sont jamais.
 ## Interface web
 
 ```sh
+git clone https://github.com/0x-type/lean_on_steroids.git && cd lean_on_steroids
 pip install -e ".[dev]"
 # Lean 4.34.1 et Mathlib : voir lean_workspace/README.md
 export OPENROUTER_API_KEY=...
