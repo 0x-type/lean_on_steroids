@@ -98,3 +98,13 @@ def test_layout_only_divergence_is_not_a_doubt():
     d = [WireLine(bbox=[100, 100, 900, 160], text=r"$x^n+1$", confidence=0.9)]
     _, uncs = consensus(1, {"C": c, "D": d}, 1000, 1000)
     assert uncs  # les accolades changent le sens : le doute reste
+
+
+def test_span_boxes_give_one_close_up_per_occurrence():
+    from mathocr.schemas import TranscribedLine
+    from mathocr.stages.transcribe import span_boxes
+    ln = TranscribedLine(id="p1.L08", page=1, bbox=[489, 569, 799, 645], text=r"$=(n+1)(\frac{n}{2}+2)$",
+                         status="normal", confidence=0.3, engine_readings={})
+    boxes = span_boxes(ln, "2")
+    assert len(boxes) == 2 and all(489 <= b[0] < b[2] <= 799 for b in boxes)
+    assert span_boxes(ln, "trop long") == []

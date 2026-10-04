@@ -598,6 +598,16 @@ def variable_types(ref: ReferenceStatement, st: ProofStructure) -> dict[str, str
     return types
 
 
+def exercise_names(ref: ReferenceStatement) -> set[str]:
+    """Noms liés dans l'énoncé de référence (∀ (f : ℝ → ℝ) (a : ℝ), …) : objets de l'exercice."""
+    names: set[str] = set()
+    for grp in re.findall(r"\(([^():]+):", ref.lean_statement):
+        names |= set(grp.split())
+    for m in re.finditer(r"[∀∃]\s*([A-Za-zα-ω][\w' ]*?)\s*(?::|∈|,)", ref.lean_statement):
+        names |= set(m.group(1).split())
+    return {n for n in names if re.fullmatch(r"[A-Za-zα-ω][\w']*", n) and n not in ("fun", "let", "have", "show")}
+
+
 @dataclass
 class TranslationResult:
     formalization: Formalization
@@ -611,6 +621,7 @@ NOT_FORMALIZED = {"introduction": "introduction (pas une affirmation)", "annonce
 
 def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> TranslationResult:
     types = variable_types(ref, st)
+    given = exercise_names(ref)
     preds = {m.group(1) for s in st.steps if s.kind == "definition"
              for m in [_DEF_HEAD.search(_clean(s.statement))] if m}
     tr = Translator(types, preds)
@@ -640,6 +651,10 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
                 sc = next((x.parent for x in st.scopes if x.id == sc), None)
             extra = sorted(c.free - bound_here)
             unknown = [v for v in extra if v not in types]
+            if unknown and set(unknown) <= given:
+                # Objet de l'énoncé (f, a…) : la copie peut s'en servir sans le redéfinir ; il est fixé par
+                # l'exercice, pas quantifié dans l'étape : traduction confiée à l'agent, qui connaît l'énoncé.
+                raise TranslationError(f"objet de l'énoncé utilisé ({', '.join(unknown)}) : traduction par agent")
             if unknown:
                 raise IncoherentReading(
                     f"lecture incohérente : variable {', '.join(unknown)} non définie dans la copie "

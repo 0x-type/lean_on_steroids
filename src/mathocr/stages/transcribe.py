@@ -433,6 +433,27 @@ def consensus(page: int, runs: dict[str, list[WireLine]], width: int, height: in
 # -- Arbitrage ------------------------------------------------------------------------------
 
 
+def span_boxes(ln: TranscribedLine, span: str, width: float = 0.35) -> list[tuple[int, int, int, int]]:
+    """Boîtes approximatives des occurrences (3 au plus) d'un fragment court dans sa ligne.
+
+    Position dans le texte → position dans la boîte, avec une marge large (35 % de la ligne) : c'est un gros
+    plan, pas une localisation exacte."""
+    strip = re.compile(r"\\[A-Za-z]+|[${}]")
+    if not span or len(span.strip()) > 3 or len(ln.bbox) != 4 or not 1 <= ln.text.count(span) <= 3:
+        return []
+    visible, frag = strip.sub("", ln.text), strip.sub("", span)
+    if not visible or not frag:
+        return []
+    x0, y0, x1, y1 = ln.bbox
+    out, start = [], 0
+    while (i := ln.text.find(span, start)) >= 0:
+        c = x0 + (x1 - x0) * (len(strip.sub("", ln.text[:i])) + len(frag) / 2) / len(visible)
+        half = (x1 - x0) * width / 2
+        out.append((int(max(x0, c - half)), y0, int(min(x1, c + half)), y1))
+        start = i + len(span)
+    return out
+
+
 def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
                lines: list[TranscribedLine], uncs: list[Uncertainty]) -> None:
     disputed = [u for u in uncs if len(u.readings) > 1 and u.readings[0].score < 0.999]
@@ -444,6 +465,10 @@ def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
     for u in disputed:
         ln = by_line[u.line_id]
         images.append(to_part(crop_line(page_img, ln.bbox), f"{u.id} — ligne {u.line_id}", max_side=1600))
+        boxes = span_boxes(ln, u.span)  # chiffre, signe, exposant : gros plan sur le fragment lui-même
+        for k, zoom in enumerate(boxes, start=1):
+            label = f"{u.id} — gros plan sur « {u.span} »" + (f" (occurrence {k}/{len(boxes)})" if len(boxes) > 1 else "")
+            images.append(to_part(crop_line(page_img, zoom, margin=0.25), label, max_side=1200))
         items.append(f"- {u.id} (ligne {u.line_id} : « {ln.text} ») fragment « {u.span} » ; lectures : "
                      + " | ".join(f"« {r.text} »" for r in u.readings))
     out = engine.structured(prompts.ADJUDICATE_SYSTEM,
@@ -461,7 +486,9 @@ def adjudicate(engine: Engine, ref: ReferenceStatement, page_img: Image.Image,
                                score=round(alt.probability, 3)))
         u.readings = sorted(new, key=lambda r: -r.score)
         u.reason += f" ; arbitrage : {d.reason}"
-        u.context_dependent = u.context_dependent or d.context_based
+        # L'arbitre a tranché sur la forme en comparant avec les autres tracés de l'élève : c'est son
+        # jugement (et non celui d'un lecteur à l'aveugle) qui dit si le contexte a été utilisé.
+        u.context_dependent = d.context_based
         if u.readings[0].text != u.chosen:
             ln = by_line[u.line_id]
             new = u.readings[0].text
@@ -629,7 +656,9 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
         pages.append(meta)
         part = to_part(im, f"page {pno}")
         runs: dict[str, list[WireLine]] = {}
-        for spec in cfg.ocr_engines:
+
+        def read(spec):
+            """Lecture aveugle d'un moteur ; retourne (nom, lignes, méta)."""
             t0 = time.monotonic()
             try:
                 if spec.startswith("mathpix"):
@@ -639,18 +668,31 @@ def transcribe(images: list[Path], ref: ReferenceStatement, cfg) -> Transcriptio
                     raw = eng.ocr_lines(to_part(im, f"page {pno}", max_side=4000))
                     from ..llm.pricing import record
                     record(engine=eng.name, model="mathpix", images=1)
-                    runs[eng.name] = [WireLine(bbox=[int(b["bbox"][0] * 1000 / rw), int(b["bbox"][1] * 1000 / rh),
-                                                     int(b["bbox"][2] * 1000 / rw), int(b["bbox"][3] * 1000 / rh)],
-                                               text=b["text"], confidence=b["confidence"]) for b in raw]
+                    lines = [WireLine(bbox=[int(b["bbox"][0] * 1000 / rw), int(b["bbox"][1] * 1000 / rh),
+                                            int(b["bbox"][2] * 1000 / rw), int(b["bbox"][3] * 1000 / rh)],
+                                      text=b["text"], confidence=b["confidence"]) for b in raw]
                 else:
                     eng = make_engine(spec, cache)
-                    runs[eng.name] = eng.structured(prompts.OCR_SYSTEM, prompts.OCR_TASK, [part], WirePage,
-                                                    effort=getattr(cfg, "ocr_effort", "high")).lines
-                runs_meta.append(EngineRun(engine=eng.name, model=eng.model, mode="aveugle", ok=True,
-                                           seconds=round(time.monotonic() - t0, 1)))
+                    lines = eng.structured(prompts.OCR_SYSTEM, prompts.OCR_TASK, [part], WirePage,
+                                           effort=getattr(cfg, "ocr_effort", "high")).lines
+                return eng.name, lines, EngineRun(engine=eng.name, model=eng.model, mode="aveugle", ok=True,
+                                                  seconds=round(time.monotonic() - t0, 1))
             except Exception as ex:  # noqa: BLE001 - un moteur défaillant ne doit pas arrêter les autres
                 log.warning("moteur %s indisponible : %s", spec, ex)
-                runs_meta.append(EngineRun(engine=spec, model="", mode="aveugle", ok=False, error=str(ex)))
+                return spec, None, EngineRun(engine=spec, model="", mode="aveugle", ok=False, error=str(ex))
+
+        # Les lecteurs sont indépendants (lecture à l'aveugle) : ils lisent en même temps.
+        import contextvars
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=max(1, len(cfg.ocr_engines))) as pool:
+            # Contexte copié dans le fil principal (compteur de coûts) puis exécuté dans chaque fil.
+            jobs = [(contextvars.copy_context(), sp) for sp in cfg.ocr_engines]
+            results = list(pool.map(lambda job: job[0].run(read, job[1]), jobs))
+        for name, lines, meta_run in results:  # ordre donné par l'utilisateur (moteur d'ancrage à égalité)
+            if lines is not None:
+                runs[name] = lines
+            runs_meta.append(meta_run)
         if not any(runs.values()):
             raise EngineError("aucun moteur OCR n'a répondu")
         if getattr(cfg, "ocr_mode", "ensemble") == "cascade":

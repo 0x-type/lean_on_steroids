@@ -149,6 +149,9 @@ def check_coverage(tr: Transcription, st: ProofStructure) -> list[FidelityCheck]
     return out
 
 
+_RELATION = re.compile(r"=|<|>|\\leq?|\\geq?|\\neq|≤|≥|≠|\\equiv")
+
+
 def _sides_in_copy(f: StepFormal, st: ProofStructure, tr: Transcription) -> tuple[bool, str]:
     """Les membres LaTeX déclarés figurent-ils dans la copie (lignes de l'étape ou de l'étape précédente d'une chaîne) ?"""
     step = st.step(f.step_id)
@@ -177,8 +180,13 @@ def _sides_in_copy(f: StepFormal, st: ProofStructure, tr: Transcription) -> tupl
 def check_fingerprints(fm: Formalization, st: ProofStructure, tr: Transcription,
                        lean_evals: dict) -> list[FidelityCheck]:
     out = []
+    base = st.pattern.base_step if st.pattern else None
     for f in fm.steps:
         if not f.sides:
+            continue
+        if f.step_id == base and not _RELATION.search(" ".join(r.excerpt for r in st.step(f.step_id).source)):
+            # « pour n = 0 le résultat est vérifié » : l'élève affirme l'énoncé au rang 0 sans l'écrire ;
+            # pas de membres à comparer, la relecture indépendante (qui voit l'énoncé) en jugera.
             continue
         present, why = _sides_in_copy(f, st, tr)
         if not present:

@@ -30,7 +30,9 @@ si ton choix repose sur le sens mathématique plutôt que sur la forme.
 ADJUDICATE_SYSTEM = """Tu arbitres des lectures divergentes d'une copie manuscrite de mathématiques. \
 Tu tranches d'après la forme du tracé (en comparant avec les autres occurrences du même symbole chez le \
 même élève), jamais d'après ce qui serait mathématiquement correct. Une lecture qui rend le calcul faux \
-peut être la bonne : l'élève a peut-être fait une erreur."""
+peut être la bonne : l'élève a peut-être fait une erreur. Si l'élève a repassé ou surchargé un symbole \
+(correction d'un chiffre en un autre), la lecture est la forme FINALE visible : tes probabilités portent sur \
+ce qui est écrit à la fin, pas sur ce qui était écrit avant la correction."""
 
 ADJUDICATE_TASK = """Énoncé de l'exercice (pour information seulement ; ne sert pas à trancher) :
 {statement}
@@ -146,7 +148,10 @@ quantifiée universellement, donc « ∀ n » explicite n'est pas une différenc
 muette (indice de somme k ou h) n'est pas une différence ; « P(n) est vraie » et la formule de P(n) \
 dépliée sont équivalentes."""
 
-COMPARE_TASK = """Pour chaque étape : `copie` = passage écrit par l'élève (il fait foi) ; `reformulation` = \
+COMPARE_TASK = """Énoncé de l'exercice (contexte : objets et notations de l'exercice ; « le résultat » désigne \
+l'énoncé) : {statement}
+
+Pour chaque étape : `copie` = passage écrit par l'élève (il fait foi) ; `reformulation` = \
 la même étape récrite par un autre agent (aide à lire la copie : contexte d'une chaîne, notation définie plus \
 haut, mais elle peut être fausse) ; `relecture` = lecture indépendante de la formalisation Lean.
 Réponds `equivalent` = vrai seulement si la relecture affirme exactement ce que dit la COPIE. Si la \

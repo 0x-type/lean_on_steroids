@@ -140,3 +140,37 @@ def test_tier2_engine_failure_leaves_step_unverified(monkeypatch):
     monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: E())
     out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="x"))
     assert out.of("s1").agent_proof is None and out.of("s1").agent_refutation is None
+
+
+def test_chain_link_is_checked_without_previous_link():
+    from mathocr.schemas import Formalization, ProofStep, ProofStructure as PS, SourceRef, StepFormal
+    steps = [ProofStep(id="s2", kind="hypothese", statement="S = T", source=[SourceRef(line_id="l", excerpt="x")]),
+             ProofStep(id="s5", kind="calcul", statement="A = B", depends_on=["s2"], source=[SourceRef(line_id="l", excerpt="x")]),
+             ProofStep(id="s6", kind="calcul", statement="B = C", depends_on=["s5"], source=[SourceRef(line_id="l", excerpt="x")])]
+    st = PS(steps=steps, scopes=[], pattern={"kind": "aucun"})
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s2", role="hyp", claim="1 = 1"),
+                                         StepFormal(step_id="s5", role="prop", claim="1 = 1", uses=["s2"]),
+                                         StepFormal(step_id="s6", role="prop", claim="1 = 1", uses=["s5"])])
+    out = agents.independent_chain_links(st, fm)
+    assert out.of("s6").uses == [] and out.of("s5").uses == ["s2"]  # l'hypothèse de récurrence reste
+
+
+def test_tier2_slow_attempt_is_abandoned(monkeypatch):
+    import time as _t
+    from mathocr.schemas import (Formalization, LeanReport, ProofStep, ProofStructure as PS, ReferenceStatement,
+                                 SourceRef, StepCheck, StepFormal)
+    ref = ReferenceStatement(exercise_id="t", statement_latex="", lean_statement="True")
+    st = PS(steps=[ProofStep(id="s1", kind="affirmation", statement="x", source=[SourceRef(line_id="p1.L01", excerpt="x")])],
+            scopes=[], pattern={"kind": "aucun"})
+    fm = Formalization(scopes=[], steps=[StepFormal(step_id="s1", role="prop", claim="1 = 1")])
+    lean = LeanReport(file="", steps=[StepCheck(step_id="s1", decl="s1", status="non_verifie")])
+
+    class Slow:
+        def structured(self, *a, **kw):
+            _t.sleep(1.0)
+            return agents.WireTier2(proof="rfl")
+
+    monkeypatch.setattr(agents, "_engine", lambda cfg, spec=None: Slow())
+    t0 = _t.monotonic()
+    out = agents.tier2_attempts(ref, st, fm, lean, PipelineConfig(reasoning_engine="x", tier2_timeout_s=0.2))
+    assert _t.monotonic() - t0 < 0.8 and out.of("s1").agent_proof is None

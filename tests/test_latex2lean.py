@@ -94,3 +94,11 @@ def test_forall_prefixed_definition():
 def test_definition_notations(stmt):
     name, _, body, _ = T().definition(stmt)
     assert name == "P" and body == "∑ k ∈ Finset.range n, (2 * k + 1) = n ^ 2"
+
+
+def test_exercise_objects_are_not_an_incoherent_reading():
+    from mathocr.schemas import ReferenceStatement
+    from mathocr.stages.latex2lean import exercise_names
+    ref = ReferenceStatement(exercise_id="t", statement_latex="",
+                             lean_statement="∀ (f : ℝ → ℝ) (a : ℝ), Continuous f → 0 ≤ a → ∀ x y, f x = f y")
+    assert {"f", "a", "x", "y"} <= exercise_names(ref) and "fun" not in exercise_names(ref)

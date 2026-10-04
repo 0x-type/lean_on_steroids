@@ -64,6 +64,7 @@ class PipelineConfig:
     tier2_engine: str | None = None  # None = reasoning_engine
     tier2_fallback_max: int = 3
     tier2_parallel: int = 8  # appels de niveau 2 simultanés
+    tier2_timeout_s: float | None = 90.0  # au-delà, la tentative est abandonnée
     polish_feedback: bool = False
 
 
@@ -129,7 +130,7 @@ def _run(
                          memory_mb=cfg.lean_memory_mb)
 
     def downstream(tr: Transcription, st_given: ProofStructure | None = None):
-        """Étapes 2 à 5 : structure, formalisation, Lean, fidélité."""
+        """Étapes 2 à 5 sans le niveau 2 : structure, formalisation, Lean, fidélité."""
         nonlocal lean_seconds
         set_stage("structure")
         st = st_given or _load(structure, ProofStructure)
@@ -148,30 +149,39 @@ def _run(
         set_stage("lean")
         lean, evals = verify(ref, st, fm, scfg, out_dir)
         lean_seconds += lean.run.seconds if lean.run else 0.0
-        broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
-        if cfg.tier2 and cfg.reasoning_engine and not broken and any(c.status == "non_verifie" for c in lean.steps):
-            from .stages.agents import tier2_attempts
-            cheap = cfg.tier2_engine or cfg.reasoning_engine
-            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory, engine=cheap)
-            _save(out_dir, "3b_formalisation_niveau2.json", fm)
-            lean, evals = verify(ref, st, fm, scfg, out_dir)
-            lean_seconds += lean.run.seconds if lean.run else 0.0
-            left = [c.step_id for c in lean.steps if c.status == "non_verifie"][:cfg.tier2_fallback_max]
-            if left and cheap != cfg.reasoning_engine and cfg.tier2_fallback_max > 0:
-                fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=cfg.reasoning_engine,
-                                    only=set(left))
-                _save(out_dir, "3b_formalisation_niveau2.json", fm)
-                lean, evals = verify(ref, st, fm, scfg, out_dir)
-                lean_seconds += lean.run.seconds if lean.run else 0.0
         _save(out_dir, "4_lean.json", lean)
 
         set_stage("fidélité")
         fid = run_fidelity(tr, st, fm, lean, evals, ref)
         return st, fm, lean, evals, fid
 
+    def tier2(st, fm, lean, evals):
+        """Niveau 2, une seule fois, sur la lecture définitive : modèle bon marché (Lean contrôle tout),
+        puis reprise limitée par le modèle de raisonnement des étapes encore non tranchées."""
+        nonlocal lean_seconds
+        broken = any(c.status == "erreur_formalisation" for c in lean.steps) or bool(lean.policy_violations)
+        if not (cfg.tier2 and cfg.reasoning_engine) or broken or not any(c.status == "non_verifie" for c in lean.steps):
+            return fm, lean, evals
+        from .stages.agents import tier2_attempts
+        set_stage("lean")
+        cheap = cfg.tier2_engine or cfg.reasoning_engine
+        fm = tier2_attempts(ref, st, fm, lean, cfg, memory=memory, engine=cheap)
+        _save(out_dir, "3b_formalisation_niveau2.json", fm)
+        lean, evals = verify(ref, st, fm, scfg, out_dir)
+        lean_seconds += lean.run.seconds if lean.run else 0.0
+        left = [c.step_id for c in lean.steps if c.status == "non_verifie"][:cfg.tier2_fallback_max]
+        if left and cheap != cfg.reasoning_engine and cfg.tier2_fallback_max > 0:
+            fm = tier2_attempts(ref, st, fm, lean, cfg, memory=None, engine=cfg.reasoning_engine, only=set(left))
+            _save(out_dir, "3b_formalisation_niveau2.json", fm)
+            lean, evals = verify(ref, st, fm, scfg, out_dir)
+            lean_seconds += lean.run.seconds if lean.run else 0.0
+        _save(out_dir, "4_lean.json", lean)
+        return fm, lean, evals
+
     st, fm, lean, evals, fid = downstream(tr)
 
-    # Arbitre « paresseux » : seulement pour les doutes qui peuvent changer le verdict.
+    # Arbitre « paresseux » : seulement pour les doutes qui peuvent changer le verdict, et AVANT le
+    # niveau 2 (le plus long) : celui-ci ne tourne qu'une fois, sur la lecture définitive.
     if cfg.lazy_judge and cfg.reasoning_engine and transcription is None:
         from .stages.transcribe import adjudicate_needed
         set_stage("arbitrage")
@@ -185,9 +195,10 @@ def _run(
             else:
                 st = patched
                 _save(out_dir, "2_structure.json", st)
-                fid = run_fidelity(tr, st, fm, lean, evals, ref)
-        else:
-            fid = run_fidelity(tr, st, fm, lean, evals, ref)
+
+    fm, lean, evals = tier2(st, fm, lean, evals)
+    set_stage("fidélité")
+    fid = run_fidelity(tr, st, fm, lean, evals, ref)
 
     # Doutes restants : bloquent-ils vraiment le verdict ? Revérification Lean de la lecture alternative.
     if any(u.blocking for u in tr.uncertainties):
@@ -197,7 +208,7 @@ def _run(
     if cfg.judge_engine:
         from .stages.agents import backtranslate
         set_stage("fidélité")
-        fid += backtranslate(tr, st, fm, cfg, fid=fid)
+        fid += backtranslate(tr, st, fm, cfg, fid=fid, ref=ref)
     (out_dir / "5_fidelite.json").write_text(json.dumps([c.model_dump() for c in fid], ensure_ascii=False, indent=1),
                                              encoding="utf-8")
     _save(out_dir, "1_transcription.json", tr)  # incertitudes enrichies (bloquante / résolution)

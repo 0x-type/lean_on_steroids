@@ -137,6 +137,46 @@ def memory_key(st: ProofStructure, fm: Formalization, sid: str) -> str:
 def formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cfg,
               memory=None) -> Formalization:
     """Code d'abord, puis mémoire partagée, puis agent pour ce qui reste."""
+    return independent_chain_links(st, _formalize(ref, tr, st, cfg, memory))
+
+
+def _members(st: ProofStructure, f: StepFormal) -> tuple[str, str] | None:
+    from .fidelity import norm
+
+    if f.sides is not None:
+        return norm(f.sides.lhs_latex), norm(f.sides.rhs_latex)
+    parts = st.step(f.step_id).statement.split("=")
+    return (norm(parts[0]), norm(parts[-1])) if len(parts) >= 2 else None
+
+
+def independent_chain_links(st: ProofStructure, fm: Formalization) -> Formalization:
+    """Un maillon de chaîne d'égalités « B = C » est vérifié pour lui-même, sans le maillon « A = B ».
+
+    Le maillon précédent n'apporte rien à un calcul juste ; s'il est faux, il permet en revanche de
+    « démontrer » un maillon faux qui revient au bon résultat (A = B faux et A = C vrai donnent B = C).
+    Les autres dépendances (hypothèse de récurrence…) sont conservées."""
+    by_id = {f.step_id: f for f in fm.steps}
+    for f in fm.steps:
+        step = next((x for x in st.steps if x.id == f.step_id), None)
+        if step is None or step.kind != "calcul" or f.role != "prop":
+            continue
+        me = _members(st, f)
+        if me is None:
+            continue
+        keep = []
+        for u in f.uses:
+            dep, df = next((x for x in st.steps if x.id == u), None), by_id.get(u)
+            if dep is not None and df is not None and dep.kind == "calcul" and df.role == "prop":
+                dm = _members(st, df)
+                if dm is not None and dm[1] == me[0]:
+                    continue  # maillon précédent de la chaîne
+            keep.append(u)
+        f.uses = keep
+    return fm
+
+
+def _formalize(ref: ReferenceStatement, tr: Transcription, st: ProofStructure, cfg,
+               memory=None) -> Formalization:
     from .latex2lean import translate_structure
 
     det = translate_structure(ref, st)
@@ -264,24 +304,34 @@ def tier2_attempts(ref: ReferenceStatement, st: ProofStructure, fm: Formalizatio
                                                              defs=defs or "(aucune)")))
 
     def attempt(task):
-        sid, f, text = task
+        sid, _, text = task
         try:
             out = _engine(cfg, engine).structured(prompts.TIER2_SYSTEM, text, [], WireTier2)
         except EngineError as ex:  # réponse tronquée, panne : l'étape reste non vérifiée, le reste continue
             log.warning("niveau 2 abandonné pour %s : %s", sid, ex)
-            return
-        f.agent_proof = _admissible(out.proof, f"étape {sid} (preuve agent)")
-        f.agent_refutation = _admissible(out.refutation, f"étape {sid} (réfutation agent)")
+            return None
+        return (_admissible(out.proof, f"étape {sid} (preuve agent)"),
+                _admissible(out.refutation, f"étape {sid} (réfutation agent)"))
 
-    # Étapes indépendantes : appels en parallèle (la durée est celle du plus lent, pas la somme).
-    # Chaque fil reçoit une copie du contexte pour que le compteur de coûts suive.
+    # Étapes indépendantes : appels en parallèle (la durée est celle du plus lent, pas la somme), chacun
+    # borné par `tier2_timeout_s` : une tentative trop lente est abandonnée (l'étape reste non vérifiée,
+    # ce qui ne peut pas fausser le verdict). Chaque fil reçoit une copie du contexte (compteur de coûts).
     if todo:
         import contextvars
-        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, wait
 
-        with ThreadPoolExecutor(max_workers=min(len(todo), getattr(cfg, "tier2_parallel", 8))) as pool:
-            for fut in [pool.submit(contextvars.copy_context().run, attempt, t) for t in todo]:
-                fut.result()
+        pool = ThreadPoolExecutor(max_workers=min(len(todo), getattr(cfg, "tier2_parallel", 8)))
+        futs = {pool.submit(contextvars.copy_context().run, attempt, t): t for t in todo}
+        done, late = wait(futs, timeout=getattr(cfg, "tier2_timeout_s", None))
+        pool.shutdown(wait=False, cancel_futures=True)
+        for fut in done:
+            res = fut.result()
+            if res is not None:
+                _, f, _ = futs[fut]
+                f.agent_proof, f.agent_refutation = res
+        if late:
+            log.warning("niveau 2 : %d tentative(s) abandonnée(s) après %s s (%s)", len(late), cfg.tier2_timeout_s,
+                        ", ".join(futs[x][0] for x in late))
     return fm
 
 
@@ -325,7 +375,7 @@ class WireCmps(BaseModel):
 
 
 def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
-                  fid: list[FidelityCheck] | None = None) -> list[FidelityCheck]:
+                  fid: list[FidelityCheck] | None = None, ref: ReferenceStatement | None = None) -> list[FidelityCheck]:
     """Relecture indépendante du Lean. Elle sert à détecter un agent infidèle : les étapes traduites
     par le code ET confirmées par l'empreinte numérique ou le prédicat n'en ont pas besoin."""
     evidence = {"empreinte_numerique", "application_predicat"}
@@ -352,7 +402,7 @@ def backtranslate(tr: Transcription, st: ProofStructure, fm: Formalization, cfg,
         return written if written and not step.implicit else f"(étape implicite) {step.statement}"
     pairs = "\n".join(f"- {f.step_id} : copie « {excerpt(f.step_id)} » / reformulation « {st.step(f.step_id).statement} »"
                       f" / relecture « {bmap.get(f.step_id, '?')} »" for f in todo)
-    cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(pairs=pairs), [], WireCmps)
+    cmp_ = eng.structured(prompts.COMPARE_SYSTEM, prompts.COMPARE_TASK.format(pairs=pairs, statement=ref.statement_latex if ref else "(non fourni)"), [], WireCmps)
     out = []
     for c in cmp_.items:
         out.append(FidelityCheck(step_id=c.step_id, kind="retrotraduction", ok=c.equivalent,
