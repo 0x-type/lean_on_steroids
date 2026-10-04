@@ -104,3 +104,10 @@ def test_justification_elementaire_absente_selon_le_mode(tolerance, blocks):
     vr = decide(ref, Transcription(pages=[], lines=[]), st, lean, [], fm, tolerance=tolerance)
     assert any("s1" in b and "saut logique" in b for b in vr.blocking_issues) is blocks
     assert any("mode tolérant" in r for r in vr.remarks) is (not blocks)
+
+
+def test_ponctuation_seule_ne_bloque_pas():
+    from mathocr.stages.fidelity import _sans_ponctuation
+    assert _sans_ponctuation(",") == _sans_ponctuation(";")
+    assert _sans_ponctuation("[a, b]") == _sans_ponctuation("[a ; b]")
+    assert _sans_ponctuation("x = 1") != _sans_ponctuation("x = 2")

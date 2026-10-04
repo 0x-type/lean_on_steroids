@@ -309,6 +309,11 @@ def _logic_change(a: str, b: str) -> bool:
     return False
 
 
+def _sans_ponctuation(s: str) -> str:
+    """Texte sans ponctuation ni espaces : « [a, b] » et « [a ; b] » (notation française) se valent."""
+    return re.sub(r"[\s$,;.:]", "", s)
+
+
 def normalize_notation(s: str) -> str:
     from .transcribe import normalize
     return re.sub(r"[$\s]", "", normalize(s))
@@ -417,6 +422,9 @@ def analyse_uncertainties(tr: Transcription, st: ProofStructure, fm: Formalizati
                 continue
             if normalize_notation(u.chosen) == normalize_notation(alt.text):
                 verdicts.append((False, f"« {alt.text} » : même notation"))
+                continue
+            if _sans_ponctuation(u.chosen) == _sans_ponctuation(alt.text):
+                verdicts.append((False, f"« {alt.text} » : ponctuation seulement (« , » / « ; » / « . »)"))
                 continue
             if not in_math:
                 if _phrase_equivalent(u.chosen, alt.text):
