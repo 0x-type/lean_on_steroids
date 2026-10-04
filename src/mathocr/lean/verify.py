@@ -247,6 +247,11 @@ def verify(
     report.statement_match = statement_match and not run.timed_out
     if glue_note:
         report.assemblage_agent, report.assemblage_etapes = glue_note[0], glue_note[1]
-    final = {k: axioms[k] for k in ("Copie.assemblage", "Copie.accord_enonce") if k in axioms}
-    report.axioms_ok = len(final) == 2 and not check_axioms(final)
+    if report.assemblage_agent and report.assemblage_agent.startswith("accepté"):
+        # L'assemblage de l'agent démontre directement l'énoncé : ce sont ses axiomes qui comptent.
+        final = {k: axioms[k] for k in ("Copie.assemblage_agent",) if k in axioms}
+        report.axioms_ok = len(final) == 1 and not check_axioms(final)
+    else:
+        final = {k: axioms[k] for k in ("Copie.assemblage", "Copie.accord_enonce") if k in axioms}
+        report.axioms_ok = len(final) == 2 and not check_axioms(final)
     return report, evals

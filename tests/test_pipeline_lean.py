@@ -250,3 +250,13 @@ def test_agent_assembly_is_checked(tmp_path, glue, accepted):
     assert lean.steps[1].status == "verifie_elementaire", lean.steps[1]
     assert (lean.assemblage_agent or "").startswith("accepté") is accepted, lean.assemblage_agent
     assert lean.statement_match is accepted
+
+
+@needs_lean
+@pytest.mark.lean
+def test_agent_assembly_axioms_are_the_ones_checked(tmp_path):
+    from mathocr.lean.sandbox import SandboxConfig
+    from mathocr.lean.verify import verify
+    ref, st, fm = _glue_case("intro x hx\nby_contra h\nhave h2 := Copie.s2 x hx h\nlinarith")
+    lean, _ = verify(ref, st, fm, SandboxConfig(workspace=ROOT / "lean_workspace"), tmp_path)
+    assert lean.assembly_ok and lean.axioms_ok  # l'assemblage automatique (échoué) ne compte plus

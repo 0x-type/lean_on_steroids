@@ -593,10 +593,22 @@ def variable_types(ref: ReferenceStatement, st: ProofStructure) -> dict[str, str
     for s in st.steps:
         for m in re.finditer(r"([A-Za-z])\s*\\in\s*(\\mathbb\{[NZQR]\}|ℕ|ℤ|ℚ|ℝ)", s.statement):
             types.setdefault(m.group(1), TYPES[m.group(2)])
+    ctx = {o.nom for o in ref.contexte.objets} if ref.contexte else set()
+    default = default_domain(ref)
     for sc in st.scopes:
         for v in sc.variables:
-            types.setdefault(v, "ℕ")
+            if v not in ctx:  # un objet de l'énoncé garde le type du contexte
+                types.setdefault(v, default)
     return types
+
+
+def default_domain(ref: ReferenceStatement) -> str:
+    """Domaine numérique de l'exercice (le plus présent dans l'énoncé de référence et son contexte) : type
+    par défaut d'une variable introduite par la copie (témoin, variable de portée)."""
+    text = ref.lean_statement + " " + " ".join(o.type for o in (ref.contexte.objets if ref.contexte else []))
+    counts = {d: text.count(d) for d in ("ℕ", "ℤ", "ℚ", "ℝ")}
+    best = max(counts, key=counts.get)
+    return best if counts[best] else "ℕ"
 
 
 def exercise_names(ref: ReferenceStatement) -> set[str]:
@@ -631,8 +643,10 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
              for m in [_DEF_HEAD.search(_clean(s.statement))] if m}
     tr = Translator(types, preds)
     scope_vars = {sc.id: sc.variables for sc in st.scopes}
-    scopes = [ScopeFormal(scope_id=sc.id, binders=[Binder(name=v, type=types.get(v, "ℕ")) for v in sc.variables])
-              for sc in st.scopes if sc.id != "global" and sc.variables]
+    ctx_names = {o.nom for o in ref.contexte.objets} if ref.contexte else set()
+    scopes = [ScopeFormal(scope_id=sc.id, binders=[Binder(name=v, type=types.get(v, default_domain(ref)))
+                                                   for v in sc.variables if v not in ctx_names])
+              for sc in st.scopes if sc.id != "global" and [v for v in sc.variables if v not in ctx_names]]
     steps: list[StepFormal] = []
     failed: dict[str, str] = {}
     incoherent: dict[str, str] = {}
@@ -652,7 +666,7 @@ def translate_structure(ref: ReferenceStatement, st: ProofStructure) -> Translat
             bound_here = set(ctx_scalars)
             sc = s.scope
             while sc and sc != "global":
-                bound_here |= set(scope_vars.get(sc, []))
+                bound_here |= set(scope_vars.get(sc, [])) - ctx_names
                 sc = next((x.parent for x in st.scopes if x.id == sc), None)
             extra = sorted(c.free - bound_here)
             unknown = [v for v in extra if v not in types]
