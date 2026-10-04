@@ -91,18 +91,56 @@ Environ 0,40 à 0,80 $ et 3 à 6 minutes par copie. Tout moteur donné sur la li
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    P["Photo de la copie"] --> Q["Contrôle de la photo<br/><i>local, gratuit</i>"]
+    Q --> A["Lecteur A<br/><i>Gemini 3.8 Flash</i>"]
+    Q --> B["Lecteur B<br/><i>Opus 5.5</i>"]
+    A --> C["Consensus des lectures"]
+    B --> C
+    C -- doutes --> D["Arbitrage des doutes, image agrandie<br/><i>Opus 5.5</i>"]
+    D --> S["Structure : étapes, cas, théorèmes cités<br/><i>Opus 5.5</i>"]
+    E["Énoncé : capture écrite en Lean,<br/>compilée et relue"] --> S
+    S --> T["Traduction en Lean<br/>code d'abord, <i>Opus 5.5</i> sinon"]
+
+    subgraph V["Vérification"]
+        direction TB
+        L["Lean 4 + Mathlib<br/>chaque étape, avec ses seules dépendances"]
+        N["Niveau 2 : preuve ou contre-exemple<br/><i>GPT-6 Luna, puis Luna-Pro</i>"]
+        AS["Assemblage : cas, absurde, témoins<br/><i>GPT-6 Luna-Pro</i>"]
+        L <-- "étape non tranchée" --> N
+        L <-- "raisonnement non direct" --> AS
+    end
+
+    T --> L
+    T -. énoncés Lean .-> J["Juge indépendant<br/><i>Gemini 3.1 Pro</i>"]
+    L --> F["Contrôles de fidélité<br/>ancrage, empreintes, lectures douteuses"]
+    J --> F
+    F -. traduction infidèle : une reprise .-> T
+    F --> R1(["raisonnement vérifié"])
+    F --> R2(["erreur mathématique établie"])
+    F --> R3(["examen nécessaire"])
+
+    classDef opus fill:#FBEBD8,stroke:#B05E0E,color:#2A1A08
+    classDef cheap fill:#DCF1ED,stroke:#0E786F,color:#08302C
+    classDef gem fill:#E3EAF8,stroke:#2D5DB5,color:#0E1F40
+    classDef lean fill:#1E6B41,stroke:#1E6B41,color:#FFFFFF
+    classDef local fill:#EEF0F3,stroke:#667085,color:#1C1F26
+    classDef ok fill:#DCF1E3,stroke:#1D7540,color:#1D7540
+    classDef err fill:#FBE0DC,stroke:#B32318,color:#B32318
+    classDef rev fill:#FFF3C9,stroke:#866800,color:#5C4700
+    class D,S,T,B opus
+    class N,AS cheap
+    class A,J gem
+    class L lean
+    class P,Q,C,E,F local
+    class R1 ok
+    class R2 err
+    class R3 rev
+    style V fill:#FAFAF8,stroke:#9AA3AF,stroke-dasharray:4 3
 ```
-photo ──► contrôle photo (local)
-      ──► 2 lecteurs à l'aveugle ──► consensus ──► arbitrage des doutes décisifs (ratures ignorées)
-      ──► structure : étapes, cas, hypothèses, théorèmes cités
-      ──► traduction en Lean (code d'abord, IA sinon)
-      ──► Lean 4 + Mathlib : chaque étape avec ses seules dépendances
-            ├─ niveau 2 : une IA propose une preuve ou un contre-exemple, Lean la revérifie
-            └─ assemblage : une IA relie les étapes de l'élève, Lean le revérifie
-      ──► fidélité : ancrage, empreintes numériques, lectures alternatives, juge en parallèle
-            └─ traduction jugée infidèle : refaite une fois, cette étape seulement
-      ──► verdict (3 issues) ──► retour à l'élève, resultat.json, rapport.html
-```
+
+En orange, Opus 5.5 : les étapes où une erreur changerait le verdict sans que Lean la voie. En vert clair, les modèles bon marché : ils ne font que proposer, et Lean revérifie chaque proposition. En bleu, Gemini. Image : `docs/architecture.png`.
 
 ## Garde-fous
 
