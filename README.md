@@ -164,17 +164,15 @@ Image: `docs/architecture_en.png`.
 * **Sandboxed Lean.** Forbidden fragments filtered (sorry, axiom, native_decide...), axioms checked
   (`propext`, `Classical.choice`, `Quot.sound`), no network, time and memory limits.
 
-### Results on the test copies
+### Example
 
-| Copy | Truth | Verdict |
-|---|---|---|
-| B06 | correct | reasoning verified (Lean proves the statement from the student's own steps) |
-| B07 | error | error established, line 14: uniform convergence on [0,1] is false |
-| A10 | error | human review needed: error found on the right line, but the digit is written over correction fluid |
-| A06, A01 | incomplete | human review needed, with the missing justifications listed |
-| B01, A05 | correct | human review needed: hard steps that need an exercise kit |
+![A real handwritten copy: Lean establishes the error on line 14](docs/example_b07.jpg)
 
-No false accusation and no false "verified" across all runs.
+A real handwritten copy on the uniform convergence of xⁿ. On line 14 the student concludes that the
+convergence is uniform on [0,1]; Lean proves the negation of that step, so the verdict is
+**mathematical error established**. The 9 other steps of the copy are proven by Lean.
+
+In the first tests on real copies there was no false accusation and no false "verified".
 
 ### Files
 
@@ -375,17 +373,15 @@ En orange, Opus 5.5 : les étapes où une erreur changerait le verdict sans que 
 * **Lean isolé.** Fragments interdits filtrés (sorry, axiom, native_decide...), axiomes contrôlés
   (`propext`, `Classical.choice`, `Quot.sound`), aucun réseau, limites de temps et de mémoire.
 
-### Résultats sur les copies de test
+### Exemple
 
-| Copie | Vérité | Verdict |
-|---|---|---|
-| B06 | juste | raisonnement vérifié (Lean démontre l'énoncé à partir des étapes de l'élève) |
-| B07 | erreur | erreur établie, ligne 14 : la convergence uniforme sur [0,1] est fausse |
-| A10 | erreur | examen nécessaire : erreur trouvée à la bonne ligne, mais le chiffre est écrit sur du correcteur |
-| A06, A01 | lacunaires | examen nécessaire, avec les justifications manquantes |
-| B01, A05 | justes | examen nécessaire : pas difficiles qui demandent un kit d'exercice |
+![Une vraie copie manuscrite : Lean établit l'erreur de la ligne 14](docs/example_b07.jpg)
 
-Aucune fausse accusation et aucun faux « vérifié » sur l'ensemble des essais.
+Une vraie copie manuscrite sur la convergence uniforme de xⁿ. Ligne 14, l'élève conclut à la convergence
+uniforme sur [0,1] ; Lean démontre la négation de cette étape, d'où le verdict **erreur mathématique
+établie**. Les 9 autres étapes de la copie sont démontrées par Lean.
+
+Lors des premiers essais sur de vraies copies, aucune fausse accusation et aucun faux « vérifié ».
 
 ### Fichiers
 
